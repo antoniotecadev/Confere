@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     FlatList,
+    Image,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -26,6 +27,8 @@ export default function CartScreen() {
   const [showSupermarketModal, setShowSupermarketModal] = useState(false);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
 
   // Sincronizar cartId quando params.id mudar (ao vir da Home)
   useEffect(() => {
@@ -224,12 +227,22 @@ export default function CartScreen() {
     ]);
   };
 
+  const handleViewImage = (imageUri: string) => {
+    setSelectedImage(imageUri);
+    setImageModalVisible(true);
+  };
+
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
   };
 
   const renderItem = ({ item }: { item: CartItem }) => (
     <View style={styles.productItem}>
+      {item.imageUri && (
+        <Pressable onPress={() => handleViewImage(item.imageUri!)}>
+          <Image source={{ uri: item.imageUri }} style={styles.productImage} />
+        </Pressable>
+      )}
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
         <Text style={styles.productDetails}>
@@ -436,6 +449,32 @@ export default function CartScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}>
+        <Pressable 
+          style={styles.imageModalOverlay}
+          onPress={() => setImageModalVisible(false)}>
+          <View style={styles.imageModalContent}>
+            {selectedImage && (
+              <Image 
+                source={{ uri: selectedImage }} 
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            )}
+            <Pressable 
+              style={styles.closeImageButton}
+              onPress={() => setImageModalVisible(false)}>
+              <Text style={styles.closeImageButtonText}>×</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -501,6 +540,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#F5F5F5',
   },
   productInfo: {
     flex: 1,
@@ -681,5 +727,37 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontSize: 16,
     fontWeight: '600',
+  },
+  imageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageModalContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '90%',
+    height: '80%',
+  },
+  closeImageButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeImageButtonText: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '300',
   },
 });
