@@ -36,6 +36,20 @@ export default function CartScreen() {
   }, [cartId]);
 
   useEffect(() => {
+    // Verificar se há um novo produto nos parâmetros
+    if (params.newProduct) {
+      try {
+        const newProduct = JSON.parse(params.newProduct as string);
+        setItems(prevItems => [...prevItems, newProduct]);
+        // Limpar o parâmetro
+        router.setParams({ newProduct: undefined });
+      } catch (error) {
+        console.error('Erro ao processar novo produto:', error);
+      }
+    }
+  }, [params.newProduct]);
+
+  useEffect(() => {
     calculateTotal();
   }, [items]);
 
@@ -95,9 +109,7 @@ export default function CartScreen() {
   };
 
   const handleAddProduct = () => {
-    // Navegar para tela de adicionar produto (será implementada depois)
-    Alert.alert('Em desenvolvimento', 'Tela de adicionar produto será implementada em breve.');
-    // router.push('/screens/AddProductScreen');
+    router.push('/screens/AddProductScreen');
   };
 
   const handleEditItem = (item: CartItem) => {
