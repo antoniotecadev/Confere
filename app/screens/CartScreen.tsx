@@ -225,9 +225,18 @@ export default function CartScreen() {
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
         </View>
-        <Pressable style={styles.addButton} onPress={handleAddProduct}>
-          <Text style={styles.addButtonText}>+ Adicionar Produto</Text>
-        </Pressable>
+        <View style={styles.buttonRow}>
+          <Pressable style={styles.addButton} onPress={handleAddProduct}>
+            <Text style={styles.addButtonText}>+ Adicionar Produto</Text>
+          </Pressable>
+          {items.length > 0 && cartId && (
+            <Pressable
+              style={styles.compareButton}
+              onPress={() => router.push(`/screens/ComparisonScreen?cartId=${cartId}`)}>
+              <Text style={styles.compareButtonText}>✓ Conferir</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Supermarket Name Modal */}
@@ -484,13 +493,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2196F3',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   addButton: {
+    flex: 1,
     backgroundColor: '#2196F3',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
   },
   addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  compareButton: {
+    flex: 1,
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  compareButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',

@@ -1,0 +1,446 @@
+import { CartsStorage } from '@/utils/carts-storage';
+import { Comparison, ComparisonsStorage } from '@/utils/comparisons-storage';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    Animated,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
+
+export default function ComparisonScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const cartId = params.cartId as string | undefined;
+
+  const [supermarket, setSupermarket] = useState('');
+  const [calculatedTotal, setCalculatedTotal] = useState(0);
+  const [chargedTotal, setChargedTotal] = useState('');
+  const [hasCompared, setHasCompared] = useState(false);
+  const [difference, setDifference] = useState(0);
+  const [matches, setMatches] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (cartId) {
+      loadCart();
+      loadExistingComparison();
+    } else {
+      Alert.alert('Erro', 'Carrinho não encontrado.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    }
+  }, [cartId]);
+
+  const loadCart = async () => {
+    if (!cartId) return;
+
+    try {
+      const cart = await CartsStorage.getCartById(cartId);
+      if (cart) {
+        setSupermarket(cart.supermarket);
+        setCalculatedTotal(cart.total);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar carrinho:', error);
+      Alert.alert('Erro', 'Não foi possível carregar o carrinho.');
+    }
+  };
+
+  const loadExistingComparison = async () => {
+    if (!cartId) return;
+
+    try {
+      const comparison = await ComparisonsStorage.getComparisonByCartId(cartId);
+      if (comparison) {
+        setChargedTotal(comparison.chargedTotal.toString());
+        setDifference(comparison.difference);
+        setMatches(comparison.matches);
+        setHasCompared(true);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar comparação:', error);
+    }
+  };
+
+  const handleCompare = async () => {
+    const charged = parseFloat(chargedTotal);
+
+    if (isNaN(charged) || charged < 0) {
+      Alert.alert('Atenção', 'Por favor, insira um valor válido.');
+      return;
+    }
+
+    const diff = charged - calculatedTotal;
+    const doesMatch = Math.abs(diff) < 0.01; // Tolerância de 1 cêntimo
+
+    setDifference(diff);
+    setMatches(doesMatch);
+    setHasCompared(true);
+
+    // Animação de fade in do resultado
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    // Salvar comparação
+    try {
+      const comparison: Comparison = {
+        id: Date.now().toString(),
+        cartId: cartId!,
+        supermarket,
+        date: new Date().toISOString(),
+        calculatedTotal,
+        chargedTotal: charged,
+        difference: diff,
+        matches: doesMatch,
+      };
+
+      await ComparisonsStorage.saveComparison(comparison);
+    } catch (error) {
+      console.error('Erro ao salvar comparação:', error);
+    }
+  };
+
+  const handleReset = () => {
+    setChargedTotal('');
+    setHasCompared(false);
+    setDifference(0);
+    setMatches(false);
+    fadeAnim.setValue(0);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString('pt-AO', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} Kz`;
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>←</Text>
+        </Pressable>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Conferir Compra</Text>
+          <Text style={styles.headerSubtitle}>{supermarket}</Text>
+        </View>
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {/* Calculated Total Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Total Calculado (App)</Text>
+          <Text style={styles.calculatedAmount}>{formatCurrency(calculatedTotal)}</Text>
+          <Text style={styles.cardDescription}>
+            Baseado nos produtos que adicionaste
+          </Text>
+        </View>
+
+        {/* Charged Total Input */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Valor Cobrado (Caixa)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0.00"
+            value={chargedTotal}
+            onChangeText={setChargedTotal}
+            keyboardType="decimal-pad"
+            placeholderTextColor="#999"
+          />
+          <Text style={styles.cardDescription}>
+            Insere o valor que apareceu no caixa
+          </Text>
+        </View>
+
+        {/* Compare Button */}
+        {!hasCompared ? (
+          <Pressable
+            style={[styles.compareButton, !chargedTotal && styles.compareButtonDisabled]}
+            onPress={handleCompare}
+            disabled={!chargedTotal}>
+            <Text style={styles.compareButtonText}>Comparar</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.resetButton} onPress={handleReset}>
+            <Text style={styles.resetButtonText}>Nova Comparação</Text>
+          </Pressable>
+        )}
+
+        {/* Result Card */}
+        {hasCompared && (
+          <Animated.View style={[styles.resultCard, { opacity: fadeAnim }]}>
+            <View
+              style={[
+                styles.resultHeader,
+                matches ? styles.resultHeaderSuccess : styles.resultHeaderWarning,
+              ]}>
+              <Text style={styles.resultIcon}>{matches ? '✅' : '⚠️'}</Text>
+              <Text style={styles.resultTitle}>
+                {matches ? 'Confere!' : 'Não confere!'}
+              </Text>
+            </View>
+
+            <View style={styles.resultContent}>
+              <View style={styles.resultRow}>
+                <Text style={styles.resultLabel}>Diferença:</Text>
+                <Text
+                  style={[
+                    styles.resultValue,
+                    difference > 0 ? styles.resultPositive : styles.resultNegative,
+                  ]}>
+                  {difference > 0 ? '+' : ''}
+                  {formatCurrency(Math.abs(difference))}
+                </Text>
+              </View>
+
+              {!matches && (
+                <View style={styles.messageBox}>
+                  <Text style={styles.messageText}>
+                    {difference > 0
+                      ? `Pagaste ${formatCurrency(Math.abs(difference))} a mais do que devias.`
+                      : `Pagaste ${formatCurrency(Math.abs(difference))} a menos do que devias.`}
+                  </Text>
+                </View>
+              )}
+
+              {matches && (
+                <View style={[styles.messageBox, styles.messageBoxSuccess]}>
+                  <Text style={styles.messageTextSuccess}>
+                    Perfeito! O valor cobrado está correto. 👍
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.proofSection}>
+              <Text style={styles.proofTitle}>📋 As tuas provas:</Text>
+              <Text style={styles.proofItem}>• Supermercado: {supermarket}</Text>
+              <Text style={styles.proofItem}>
+                • Data: {new Date().toLocaleDateString('pt-PT')}
+              </Text>
+              <Text style={styles.proofItem}>
+                • Total calculado: {formatCurrency(calculatedTotal)}
+              </Text>
+              <Text style={styles.proofItem}>
+                • Total cobrado: {formatCurrency(parseFloat(chargedTotal))}
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  header: {
+    backgroundColor: '#2196F3',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  backButton: {
+    marginBottom: 10,
+  },
+  backButtonText: {
+    fontSize: 28,
+    color: '#FFFFFF',
+  },
+  headerContent: {
+    gap: 4,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
+    gap: 16,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calculatedAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#2196F3',
+    marginBottom: 8,
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: '#999999',
+  },
+  input: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333333',
+    borderBottomWidth: 2,
+    borderBottomColor: '#E0E0E0',
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  compareButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  compareButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+  },
+  compareButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  resetButton: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+  },
+  resetButtonText: {
+    color: '#2196F3',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  resultCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  resultHeader: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  resultHeaderSuccess: {
+    backgroundColor: '#4CAF50',
+  },
+  resultHeaderWarning: {
+    backgroundColor: '#FF9800',
+  },
+  resultIcon: {
+    fontSize: 64,
+    marginBottom: 12,
+  },
+  resultTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  resultContent: {
+    padding: 20,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  resultLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  resultValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  resultPositive: {
+    color: '#F44336',
+  },
+  resultNegative: {
+    color: '#4CAF50',
+  },
+  messageBox: {
+    backgroundColor: '#FFF3E0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+    padding: 16,
+    borderRadius: 8,
+  },
+  messageBoxSuccess: {
+    backgroundColor: '#E8F5E9',
+    borderLeftColor: '#4CAF50',
+  },
+  messageText: {
+    fontSize: 16,
+    color: '#E65100',
+    lineHeight: 24,
+  },
+  messageTextSuccess: {
+    fontSize: 16,
+    color: '#2E7D32',
+    lineHeight: 24,
+  },
+  proofSection: {
+    backgroundColor: '#F5F5F5',
+    padding: 20,
+    gap: 8,
+  },
+  proofTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  proofItem: {
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 20,
+  },
+});
