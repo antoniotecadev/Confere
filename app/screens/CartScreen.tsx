@@ -191,7 +191,7 @@ export default function CartScreen() {
     setEditModalVisible(true);
   };
 
-  const handleSaveEditedItem = () => {
+  const handleSaveEditedItem = async () => {
     if (!editingItem) return;
 
     if (!editingItem.name.trim()) {
@@ -209,7 +209,27 @@ export default function CartScreen() {
       return;
     }
 
-    setItems(items.map(item => (item.id === editingItem.id ? editingItem : item)));
+    const updatedItems = items.map(item => (item.id === editingItem.id ? editingItem : item));
+    setItems(updatedItems);
+    
+    // Salvar no AsyncStorage
+    if (cartId) {
+      const updatedCart: Cart = {
+        id: cartId,
+        supermarket,
+        date: new Date().toISOString(),
+        items: updatedItems,
+        total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      };
+      
+      try {
+        await CartsStorage.updateCart(updatedCart);
+      } catch (error) {
+        console.error('Erro ao atualizar carrinho:', error);
+        Alert.alert('Erro', 'Não foi possível salvar as alterações.');
+      }
+    }
+    
     setEditModalVisible(false);
     setEditingItem(null);
   };
@@ -220,8 +240,41 @@ export default function CartScreen() {
       {
         text: 'Remover',
         style: 'destructive',
-        onPress: () => {
-          setItems(items.filter(item => item.id !== itemId));
+        onPress: async () => {
+          const itemToRemove = items.find(item => item.id === itemId);
+          const updatedItems = items.filter(item => item.id !== itemId);
+          setItems(updatedItems);
+          
+          // Deletar foto física se existir
+          if (itemToRemove?.imageUri) {
+            try {
+              const FileSystem = require('expo-file-system');
+              const fileInfo = await FileSystem.getInfoAsync(itemToRemove.imageUri);
+              if (fileInfo.exists) {
+                await FileSystem.deleteAsync(itemToRemove.imageUri, { idempotent: true });
+              }
+            } catch (error) {
+              console.warn('Erro ao deletar foto:', error);
+            }
+          }
+          
+          // Salvar no AsyncStorage
+          if (cartId) {
+            const updatedCart: Cart = {
+              id: cartId,
+              supermarket,
+              date: new Date().toISOString(),
+              items: updatedItems,
+              total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+            };
+            
+            try {
+              await CartsStorage.updateCart(updatedCart);
+            } catch (error) {
+              console.error('Erro ao atualizar carrinho:', error);
+              Alert.alert('Erro', 'Não foi possível salvar as alterações.');
+            }
+          }
         },
       },
     ]);

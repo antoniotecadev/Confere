@@ -65,7 +65,7 @@ export default function OnboardingScreen() {
 
   const handleSkip = async () => {
     await markOnboardingComplete();
-    router.replace('/(tabs)');
+    router.replace('/screens/HomeScreen');
   };
 
   const handleNext = () => {
@@ -79,7 +79,7 @@ export default function OnboardingScreen() {
 
   const handleStart = async () => {
     await markOnboardingComplete();
-    router.replace('/(tabs)');
+    router.replace('/screens/HomeScreen');
   };
 
   const markOnboardingComplete = async () => {

@@ -21,16 +21,16 @@ export default function SplashScreen() {
       const hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
       
       if (hasSeenOnboarding === 'true') {
-        // Navega para Home (tabs)
-        router.replace('/(tabs)');
+        // Navega para Home
+        router.replace('/screens/HomeScreen');
       } else {
         // Navega para Onboarding
         router.replace('/screens/OnboardingScreen');
       }
     } catch (error) {
       console.error('Erro ao verificar status do onboarding:', error);
-      // Em caso de erro, vai para tabs
-      router.replace('/(tabs)');
+      // Em caso de erro, vai para Home
+      router.replace('/screens/HomeScreen');
     }
   };
 
