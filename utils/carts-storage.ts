@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 const CARTS_STORAGE_KEY = '@confere:carts';
 
@@ -7,6 +8,7 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  imageUri?: string;
 }
 
 export interface Cart {
@@ -79,11 +81,33 @@ export const CartsStorage = {
   },
 
   /**
-   * Remove um carrinho
+   * Remove um carrinho e suas fotos
    */
   async deleteCart(id: string): Promise<void> {
     try {
       const carts = await this.getAllCarts();
+      const cartToDelete = carts.find(cart => cart.id === id);
+      
+      // Eliminar fotos físicas dos produtos deste carrinho
+      if (cartToDelete && cartToDelete.items) {
+        for (const item of cartToDelete.items) {
+          if (item.imageUri) {
+            try {
+              // Verificar se o arquivo existe antes de tentar deletar
+              const fileInfo = await FileSystem.getInfoAsync(item.imageUri);
+              if (fileInfo.exists) {
+                await FileSystem.deleteAsync(item.imageUri, { idempotent: true });
+                console.log('Foto eliminada:', item.imageUri);
+              }
+            } catch (fileError) {
+              console.warn('Erro ao eliminar foto:', item.imageUri, fileError);
+              // Continuar mesmo se houver erro ao deletar foto individual
+            }
+          }
+        }
+      }
+      
+      // Remover carrinho do AsyncStorage
       const filteredCarts = carts.filter(cart => cart.id !== id);
       await AsyncStorage.setItem(CARTS_STORAGE_KEY, JSON.stringify(filteredCarts));
     } catch (error) {

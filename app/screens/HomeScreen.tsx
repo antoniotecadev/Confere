@@ -2,6 +2,7 @@ import { Cart, CartsStorage } from '@/utils/carts-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Pressable,
     RefreshControl,
@@ -51,6 +52,29 @@ export default function HomeScreen() {
     router.push(`/screens/CartScreen?id=${cartId}`);
   };
 
+  const handleDeleteCart = (cartId: string, supermarketName: string) => {
+    Alert.alert(
+      'Eliminar carrinho',
+      `Tens certeza que desejas eliminar o carrinho "${supermarketName}" e todos os produtos dentro dele?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await CartsStorage.deleteCart(cartId);
+              await loadCarts();
+            } catch (error) {
+              console.error('Erro ao eliminar carrinho:', error);
+              Alert.alert('Erro', 'Não foi possível eliminar o carrinho.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const day = date.getDate().toString().padStart(2, '0');
@@ -64,23 +88,30 @@ export default function HomeScreen() {
   };
 
   const renderCartItem = ({ item }: { item: Cart }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.cartItem,
-        pressed && styles.cartItemPressed,
-      ]}
-      onPress={() => handleOpenCart(item.id)}>
-      <View style={styles.cartHeader}>
-        <Text style={styles.supermarketName}>{item.supermarket}</Text>
-        <Text style={styles.cartDate}>{formatDate(item.date)}</Text>
-      </View>
-      <View style={styles.cartFooter}>
-        <Text style={styles.itemCount}>
-          {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
-        </Text>
-        <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
-      </View>
-    </Pressable>
+    <View style={styles.cartItem}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.cartItemContent,
+          pressed && styles.cartItemPressed,
+        ]}
+        onPress={() => handleOpenCart(item.id)}>
+        <View style={styles.cartHeader}>
+          <Text style={styles.supermarketName}>{item.supermarket}</Text>
+          <Text style={styles.cartDate}>{formatDate(item.date)}</Text>
+        </View>
+        <View style={styles.cartFooter}>
+          <Text style={styles.itemCount}>
+            {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
+          </Text>
+          <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
+        </View>
+      </Pressable>
+      <Pressable
+        style={styles.deleteCartButton}
+        onPress={() => handleDeleteCart(item.id, item.supermarket)}>
+        <Text style={styles.deleteCartButtonText}>×</Text>
+      </Pressable>
+    </View>
   );
 
   const renderEmptyState = () => (
@@ -161,8 +192,8 @@ const styles = StyleSheet.create({
   cartItem: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
+    flexDirection: 'row',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -171,6 +202,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  cartItemContent: {
+    flex: 1,
+    padding: 16,
   },
   cartItemPressed: {
     opacity: 0.7,
@@ -253,6 +288,19 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
   fabIcon: {
+    fontSize: 32,
+    color: '#FFFFFF',
+    fontWeight: '300',
+  },
+  deleteCartButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 50,
+    backgroundColor: '#F44336',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  deleteCartButtonText: {
     fontSize: 32,
     color: '#FFFFFF',
     fontWeight: '300',
