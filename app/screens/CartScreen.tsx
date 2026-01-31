@@ -27,6 +27,13 @@ export default function CartScreen() {
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
 
+  // Sincronizar cartId quando params.id mudar (ao vir da Home)
+  useEffect(() => {
+    if (params.id && params.id !== cartId) {
+      setCartId(params.id as string);
+    }
+  }, [params.id]);
+
   useEffect(() => {
     if (cartId) {
       loadCart(cartId);
@@ -130,7 +137,7 @@ export default function CartScreen() {
       }
 
       Alert.alert('Sucesso', 'Carrinho salvo com sucesso!', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => router.replace('/screens/HomeScreen') },
       ]);
     } catch (error) {
       console.error('Erro ao salvar carrinho:', error);

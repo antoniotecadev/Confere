@@ -1,6 +1,6 @@
 import { Cart, CartsStorage } from '@/utils/carts-storage';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
     FlatList,
     Pressable,
@@ -16,9 +16,11 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadCarts();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadCarts();
+    }, [])
+  );
 
   const loadCarts = async () => {
     try {
