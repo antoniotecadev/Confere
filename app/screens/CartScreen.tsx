@@ -351,36 +351,46 @@ export default function CartScreen() {
               onChangeText={setSupermarket}
               autoFocus
             />
-            <Pressable
-              style={styles.modalButton}
-              onPress={async () => {
-                if (!supermarket.trim()) {
-                  Alert.alert('Atenção', 'Por favor, informe o nome do supermercado.');
-                  return;
-                }
-                
-                // Criar e salvar o carrinho imediatamente
-                const newCartId = Date.now().toString();
-                const newCart: Cart = {
-                  id: newCartId,
-                  supermarket,
-                  date: new Date().toISOString(),
-                  items: [],
-                  total: 0,
-                };
-                
-                try {
-                  await CartsStorage.saveCart(newCart);
-                  setCartId(newCartId);
-                  setIsNewCart(false);
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => {
                   setShowSupermarketModal(false);
-                } catch (error) {
-                  console.error('Erro ao criar carrinho:', error);
-                  Alert.alert('Erro', 'Não foi possível criar o carrinho.');
-                }
-              }}>
-              <Text style={styles.modalButtonText}>Continuar</Text>
-            </Pressable>
+                  router.replace('/screens/HomeScreen');
+                }}>
+                <Text style={styles.modalCancelButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalButton}
+                onPress={async () => {
+                  if (!supermarket.trim()) {
+                    Alert.alert('Atenção', 'Por favor, informe o nome do supermercado.');
+                    return;
+                  }
+                  
+                  // Criar e salvar o carrinho imediatamente
+                  const newCartId = Date.now().toString();
+                  const newCart: Cart = {
+                    id: newCartId,
+                    supermarket,
+                    date: new Date().toISOString(),
+                    items: [],
+                    total: 0,
+                  };
+                  
+                  try {
+                    await CartsStorage.saveCart(newCart);
+                    setCartId(newCartId);
+                    setIsNewCart(false);
+                    setShowSupermarketModal(false);
+                  } catch (error) {
+                    console.error('Erro ao criar carrinho:', error);
+                    Alert.alert('Erro', 'Não foi possível criar o carrinho.');
+                  }
+                }}>
+                <Text style={styles.modalButtonText}>Continuar</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
