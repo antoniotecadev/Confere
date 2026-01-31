@@ -17,7 +17,7 @@ import {
 export default function CartScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const cartId = params.id as string | undefined;
+  const [cartId, setCartId] = useState<string | undefined>(params.id as string | undefined);
 
   const [supermarket, setSupermarket] = useState('');
   const [items, setItems] = useState<CartItem[]>([]);
@@ -30,23 +30,53 @@ export default function CartScreen() {
   useEffect(() => {
     if (cartId) {
       loadCart(cartId);
+      setShowSupermarketModal(false);
     } else {
+      // Novo carrinho sem ID - mostrar modal para pedir nome
       setShowSupermarketModal(true);
     }
   }, [cartId]);
 
   useEffect(() => {
-    // Verificar se há um novo produto nos parâmetros
-    if (params.newProduct) {
-      try {
-        const newProduct = JSON.parse(params.newProduct as string);
-        setItems(prevItems => [...prevItems, newProduct]);
-        // Limpar o parâmetro
-        router.setParams({ newProduct: undefined });
-      } catch (error) {
-        console.error('Erro ao processar novo produto:', error);
+    // Verificar se há um novo produto nos parâmetros quando a tela recebe foco
+    const checkNewProduct = async () => {
+      if (params.newProduct) {
+        try {
+          const newProduct = JSON.parse(params.newProduct as string);
+          
+          // Buscar os items mais recentes do carrinho para evitar sobrescrever
+          let currentItems = items;
+          if (cartId) {
+            const cart = await CartsStorage.getCartById(cartId);
+            if (cart) {
+              currentItems = cart.items;
+            }
+          }
+          
+          const updatedItems = [...currentItems, newProduct];
+          setItems(updatedItems);
+          
+          // Salvar o carrinho atualizado imediatamente no AsyncStorage
+          if (cartId) {
+            const updatedCart: Cart = {
+              id: cartId,
+              supermarket,
+              date: new Date().toISOString(),
+              items: updatedItems,
+              total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+            };
+            await CartsStorage.updateCart(updatedCart);
+          }
+          
+          // Limpar o parâmetro
+          router.setParams({ newProduct: undefined });
+        } catch (error) {
+          console.error('Erro ao processar novo produto:', error);
+        }
       }
-    }
+    };
+
+    checkNewProduct();
   }, [params.newProduct]);
 
   useEffect(() => {
@@ -108,8 +138,42 @@ export default function CartScreen() {
     }
   };
 
-  const handleAddProduct = () => {
-    router.push('/screens/AddProductScreen');
+  const handleAddProduct = async () => {
+    // Se não tem cartId ainda, criar e salvar o carrinho antes de ir para AddProduct
+    let currentCartId = cartId;
+    
+    if (!currentCartId) {
+      if (!supermarket.trim()) {
+        Alert.alert('Atenção', 'Por favor, informe o nome do supermercado primeiro.');
+        setShowSupermarketModal(true);
+        return;
+      }
+      
+      // Criar novo carrinho com o nome do supermercado
+      currentCartId = Date.now().toString();
+      const newCart: Cart = {
+        id: currentCartId,
+        supermarket,
+        date: new Date().toISOString(),
+        items: [],
+        total: 0,
+      };
+      
+      try {
+        await CartsStorage.saveCart(newCart);
+        setCartId(currentCartId);
+        setIsNewCart(false);
+      } catch (error) {
+        console.error('Erro ao criar carrinho:', error);
+        Alert.alert('Erro', 'Não foi possível criar o carrinho.');
+        return;
+      }
+    }
+    
+    router.push({
+      pathname: '/screens/AddProductScreen',
+      params: { id: currentCartId },
+    } as any);
   };
 
   const handleEditItem = (item: CartItem) => {
@@ -244,9 +308,21 @@ export default function CartScreen() {
         visible={showSupermarketModal}
         transparent
         animationType="fade"
-        onRequestClose={() => {}}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        onRequestClose={() => {
+          if (supermarket.trim()) {
+            setShowSupermarketModal(false);
+          }
+        }}>
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => {
+            if (supermarket.trim()) {
+              setShowSupermarketModal(false);
+            }
+          }}>
+          <Pressable 
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Nome do Supermercado</Text>
             <TextInput
               style={styles.modalInput}
@@ -257,17 +333,36 @@ export default function CartScreen() {
             />
             <Pressable
               style={styles.modalButton}
-              onPress={() => {
-                if (supermarket.trim()) {
-                  setShowSupermarketModal(false);
-                } else {
+              onPress={async () => {
+                if (!supermarket.trim()) {
                   Alert.alert('Atenção', 'Por favor, informe o nome do supermercado.');
+                  return;
+                }
+                
+                // Criar e salvar o carrinho imediatamente
+                const newCartId = Date.now().toString();
+                const newCart: Cart = {
+                  id: newCartId,
+                  supermarket,
+                  date: new Date().toISOString(),
+                  items: [],
+                  total: 0,
+                };
+                
+                try {
+                  await CartsStorage.saveCart(newCart);
+                  setCartId(newCartId);
+                  setIsNewCart(false);
+                  setShowSupermarketModal(false);
+                } catch (error) {
+                  console.error('Erro ao criar carrinho:', error);
+                  Alert.alert('Erro', 'Não foi possível criar o carrinho.');
                 }
               }}>
               <Text style={styles.modalButtonText}>Continuar</Text>
             </Pressable>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Edit Item Modal */}

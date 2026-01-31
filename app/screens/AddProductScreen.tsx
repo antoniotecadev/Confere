@@ -132,13 +132,18 @@ export default function AddProductScreen() {
       name: name.trim(),
       price: parseFloat(price),
       quantity: parseInt(quantity),
+      imageUri: imageUri || undefined,
     };
 
-    // Retornar o produto para CartScreen através de parâmetros
-    router.back();
-    // Passar o produto de volta usando eventos ou state management
-    // Por enquanto, vamos usar uma solução simples com query params
-    router.setParams({ newProduct: JSON.stringify(newProduct) });
+    // Passar o produto de volta para CartScreen e voltar
+    // Usar replace para garantir que o parâmetro seja passado corretamente
+    router.replace({
+      pathname: '/screens/CartScreen',
+      params: { 
+        id: params.id as string,
+        newProduct: JSON.stringify(newProduct),
+      },
+    } as any);
   };
 
   return (
