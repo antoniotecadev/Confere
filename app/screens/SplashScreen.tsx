@@ -24,11 +24,8 @@ export default function SplashScreen() {
         // Navega para Home (tabs)
         router.replace('/(tabs)');
       } else {
-        // Navega para Onboarding (será criado depois)
-        // Por enquanto, vamos direcionar para tabs
-        router.replace('/(tabs)');
-        // Descomente quando criar o onboarding:
-        // router.replace('/screens/OnboardingScreen');
+        // Navega para Onboarding
+        router.replace('/screens/OnboardingScreen');
       }
     } catch (error) {
       console.error('Erro ao verificar status do onboarding:', error);
