@@ -42,15 +42,11 @@ export default function HomeScreen() {
   }, []);
 
   const handleCreateNewCart = () => {
-    // Navegar para tela de criar carrinho (será implementada depois)
-    console.log('Criar novo carrinho');
-    // router.push('/screens/CartScreen');
+    router.push('/screens/CartScreen');
   };
 
   const handleOpenCart = (cartId: string) => {
-    // Navegar para tela de detalhes do carrinho
-    console.log('Abrir carrinho:', cartId);
-    // router.push(`/screens/CartScreen?id=${cartId}`);
+    router.push(`/screens/CartScreen?id=${cartId}`);
   };
 
   const formatDate = (dateString: string) => {
