@@ -155,6 +155,14 @@ export default function HomeScreen() {
             onPress={() => router.push('/screens/StatisticsScreen')}>
             <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.headerButtonPressed,
+            ]}
+            onPress={() => router.push('/screens/SettingsScreen')}>
+            <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+          </Pressable>
         </View>
       </View>
 
