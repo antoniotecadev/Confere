@@ -19,16 +19,43 @@ export const PriceComparisonService = {
    * Normaliza nomes de produtos (remove espaços extras, lowercase, etc)
    */
   normalizeProductName(name: string): string {
-    return name
+    let normalized = name
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')
-      .replace(/[áàâã]/g, 'a')
-      .replace(/[éèê]/g, 'e')
-      .replace(/[íìî]/g, 'i')
-      .replace(/[óòôõ]/g, 'o')
-      .replace(/[úùû]/g, 'u')
-      .replace(/ç/g, 'c');
+      .replace(/\s+/g, ' ');
+
+    // Remover acentos
+    normalized = normalized
+      .replace(/[áàâãä]/g, 'a')
+      .replace(/[éèêë]/g, 'e')
+      .replace(/[íìîï]/g, 'i')
+      .replace(/[óòôõö]/g, 'o')
+      .replace(/[úùûü]/g, 'u')
+      .replace(/ç/g, 'c')
+      .replace(/ñ/g, 'n');
+
+    // Remover quantidades (1kg, 500g, 2l, 1.5l, 250ml, etc)
+    normalized = normalized
+      .replace(/\d+[\.,]?\d*\s?(kg|g|l|ml|un|unid|unidade|unidades|pc|pcs|pacote|pacotes)/gi, '')
+      .replace(/\d+x/gi, ''); // Remove "2x", "3x"
+
+    // Remover palavras comuns que não identificam o produto
+    const wordsToRemove = [
+      'pacote', 'caixa', 'garrafa', 'lata', 'fardo',
+      'embalagem', 'pack', 'saco', 'vidro', 'plastico',
+      'de', 'da', 'do', 'com', 'sem', 'extra', 'super',
+      'kg', 'g', 'l', 'ml', 'litro', 'litros', 'grama', 'gramas'
+    ];
+    
+    wordsToRemove.forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      normalized = normalized.replace(regex, '');
+    });
+
+    // Remover espaços múltiplos e trim final
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+
+    return normalized;
   },
 
   /**
@@ -135,5 +162,43 @@ export const PriceComparisonService = {
     return allProducts.filter(product => 
       this.normalizeProductName(product.productName).includes(normalizedSearch)
     );
+  },
+
+  /**
+   * Retorna lista de nomes de produtos únicos para autocomplete
+   */
+  async getAllProductNames(): Promise<string[]> {
+    try {
+      const carts = await CartsStorage.getAllCarts();
+      const productNames = new Set<string>();
+
+      carts.forEach(cart => {
+        cart.items.forEach(item => {
+          productNames.add(item.name);
+        });
+      });
+
+      return Array.from(productNames).sort();
+    } catch (error) {
+      console.error('Erro ao obter nomes de produtos:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Sugere produtos baseado no texto digitado
+   */
+  async suggestProducts(searchTerm: string, limit: number = 5): Promise<string[]> {
+    if (!searchTerm || searchTerm.trim().length < 2) return [];
+
+    const allNames = await this.getAllProductNames();
+    const normalizedSearch = this.normalizeProductName(searchTerm);
+
+    // Filtrar produtos que correspondem
+    const matches = allNames.filter(name => 
+      this.normalizeProductName(name).includes(normalizedSearch)
+    );
+
+    return matches.slice(0, limit);
   },
 };

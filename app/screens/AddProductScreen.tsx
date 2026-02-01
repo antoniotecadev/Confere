@@ -1,9 +1,11 @@
+import { PriceComparisonService } from '@/app/services/PriceComparisonService';
 import { CartItem } from '@/utils/carts-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    FlatList,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -24,6 +26,28 @@ export default function AddProductScreen() {
   const [quantity, setQuantity] = useState('1');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (name.length >= 2) {
+      loadSuggestions();
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [name]);
+
+  const loadSuggestions = async () => {
+    const productSuggestions = await PriceComparisonService.suggestProducts(name);
+    setSuggestions(productSuggestions);
+    setShowSuggestions(productSuggestions.length > 0);
+  };
+
+  const handleSelectSuggestion = (suggestion: string) => {
+    setName(suggestion);
+    setShowSuggestions(false);
+  };
 
   const requestCameraPermission = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -191,7 +215,24 @@ export default function AddProductScreen() {
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+              onFocus={() => name.length >= 2 && setShowSuggestions(true)}
             />
+            {showSuggestions && suggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <FlatList
+                  data={suggestions}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={styles.suggestionItem}
+                      onPress={() => handleSelectSuggestion(item)}>
+                      <Text style={styles.suggestionText}>📦 {item}</Text>
+                    </Pressable>
+                  )}
+                  scrollEnabled={false}
+                />
+              </View>
+            )}
           </View>
 
           {/* Price */}
@@ -365,6 +406,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  suggestionText: {
+    fontSize: 15,
+    color: '#333333',
   },
   quantityContainer: {
     flexDirection: 'row',
