@@ -182,7 +182,16 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Floating Action Button */}
+      {/* Floating Action Buttons */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.fabSecondary,
+          pressed && styles.fabPressed,
+        ]}
+        onPress={() => router.push('/screens/PriceComparisonScreen')}>
+        <Ionicons name="pricetags" size={24} color="#FFFFFF" />
+      </Pressable>
+
       <Pressable
         style={({ pressed }) => [
           styles.fab,
@@ -325,6 +334,25 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabSecondary: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4CAF50',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
