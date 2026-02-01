@@ -1,4 +1,5 @@
 import { Cart, CartsStorage } from '@/utils/carts-storage';
+import { ComparisonsStorage } from '@/utils/comparisons-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -57,7 +58,7 @@ export default function HomeScreen() {
   const handleDeleteCart = (cartId: string, supermarketName: string) => {
     Alert.alert(
       'Eliminar carrinho',
-      `Tens certeza que desejas eliminar o carrinho "${supermarketName}" e todos os produtos dentro dele?`,
+      `Tens certeza que desejas eliminar o carrinho "${supermarketName}" e todos os produtos dentro dele?\n\nO histórico de comparação também será eliminado.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -65,7 +66,10 @@ export default function HomeScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Eliminar o carrinho
               await CartsStorage.deleteCart(cartId);
+              // Eliminar o histórico de comparação associado
+              await ComparisonsStorage.deleteComparison(cartId);
               await loadCarts();
             } catch (error) {
               console.error('Erro ao eliminar carrinho:', error);
@@ -134,14 +138,24 @@ export default function HomeScreen() {
           <Text style={styles.headerTitle}>Confere</Text>
           <Text style={styles.headerSubtitle}>Os meus carrinhos</Text>
         </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.statsButton,
-            pressed && styles.statsButtonPressed,
-          ]}
-          onPress={() => router.push('/screens/StatisticsScreen')}>
-          <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
-        </Pressable>
+        <View style={styles.headerButtons}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.headerButtonPressed,
+            ]}
+            onPress={() => router.push('/screens/HistoryScreen')}>
+            <Ionicons name="time-outline" size={24} color="#FFFFFF" />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.headerButton,
+              pressed && styles.headerButtonPressed,
+            ]}
+            onPress={() => router.push('/screens/StatisticsScreen')}>
+            <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Cart List */}
@@ -197,7 +211,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
   },
-  statsButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -205,7 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statsButtonPressed: {
+  headerButtonPressed: {
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   listContent: {
