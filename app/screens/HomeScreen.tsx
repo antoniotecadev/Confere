@@ -1,4 +1,5 @@
 import { Cart, CartsStorage } from '@/utils/carts-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
     Text,
     View,
 } from 'react-native';
+
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -128,8 +130,18 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Confere</Text>
-        <Text style={styles.headerSubtitle}>Os meus carrinhos</Text>
+        <View>
+          <Text style={styles.headerTitle}>Confere</Text>
+          <Text style={styles.headerSubtitle}>Os meus carrinhos</Text>
+        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.statsButton,
+            pressed && styles.statsButtonPressed,
+          ]}
+          onPress={() => router.push('/screens/StatisticsScreen')}>
+          <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
+        </Pressable>
       </View>
 
       {/* Cart List */}
@@ -171,6 +183,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 32,
@@ -181,6 +196,17 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
+  },
+  statsButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsButtonPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   listContent: {
     padding: 16,

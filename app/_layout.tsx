@@ -20,6 +20,7 @@ export default function RootLayout() {
           <Stack.Screen name="screens/CartScreen" options={{ headerShown: false }} />
           <Stack.Screen name="screens/AddProductScreen" options={{ headerShown: false }} />
           <Stack.Screen name="screens/ComparisonScreen" options={{ headerShown: false }} />
+          <Stack.Screen name="screens/StatisticsScreen" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
