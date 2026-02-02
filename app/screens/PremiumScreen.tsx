@@ -1,13 +1,13 @@
 import { PremiumService } from '@/app/services/PremiumService';
 import { UserService } from '@/app/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Clipboard,
   Image,
   Linking,
   Platform,
@@ -105,8 +105,8 @@ export default function PremiumScreen() {
     }
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    Clipboard.setString(text);
+  const copyToClipboard = async (text: string, label: string) => {
+    await Clipboard.setStringAsync(text);
     Alert.alert('Copiado!', `${label} copiado para a área de transferência.`);
   };
 
