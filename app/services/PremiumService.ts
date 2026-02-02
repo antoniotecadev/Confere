@@ -87,19 +87,61 @@ class PremiumServiceClass {
   }
 
   /**
-   * Envia comprovativo de pagamento Multicaixa
+   * Verifica se o usuário tem pagamento pendente
+   * ✅ OTIMIZADO: Lê apenas a pasta do próprio usuário (sem query, direto!)
    */
-  async submitPayment(receiptUri: string, amount: number = 1500): Promise<boolean> {
+  async hasPendingPayment(): Promise<boolean> {
     try {
       const userId = await UserService.getUserId();
+      
+      // Lê apenas os pagamentos DESTE usuário (estrutura: payments/userId/...)
+      const userPaymentsRef = ref(database, `payments/${userId}`);
+      const snapshot = await get(userPaymentsRef);
+
+      if (!snapshot.exists()) {
+        return false;
+      }
+
+      const payments = snapshot.val();
+      
+      // Verificar se algum está pending
+      for (const paymentId in payments) {
+        const payment = payments[paymentId];
+        if (payment.status === 'pending') {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao verificar pagamentos pendentes:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Envia comprovativo de pagamento Multicaixa
+   */
+  async submitPayment(receiptUri: string, amount: number = 1500): Promise<{ success: boolean; message?: string }> {
+    try {
+      const userId = await UserService.getUserId();
+      
+      // Verificar se já tem pagamento pendente
+      const hasPending = await this.hasPendingPayment();
+      if (hasPending) {
+        return {
+          success: false,
+          message: 'Você já tem um pagamento pendente. Aguarde a validação antes de enviar outro.'
+        };
+      }
+
       const deviceInfo = await UserService.getDeviceInfo();
 
-      // Criar novo pagamento na fila
-      const paymentsRef = ref(database, 'payments');
-      const newPaymentRef = push(paymentsRef);
+      // Criar pagamento na pasta do usuário (estrutura: payments/userId/paymentId)
+      const userPaymentsRef = ref(database, `payments/${userId}`);
+      const newPaymentRef = push(userPaymentsRef);
 
-      const payment: PaymentRequest = {
-        userId,
+      const payment = {
         amount,
         receiptUri,
         deviceInfo,
@@ -112,10 +154,13 @@ class PremiumServiceClass {
       // Invalidar cache
       this.cachedStatus = null;
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Erro ao enviar pagamento:', error);
-      return false;
+      return {
+        success: false,
+        message: 'Erro ao enviar pagamento. Verifique sua conexão.'
+      };
     }
   }
 

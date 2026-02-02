@@ -82,9 +82,9 @@ export default function PremiumScreen() {
     setIsSubmitting(true);
 
     try {
-      const success = await PremiumService.submitPayment(receiptUri, 1500);
+      const result = await PremiumService.submitPayment(receiptUri, 1500);
       
-      if (success) {
+      if (result.success) {
         Alert.alert(
           'Pagamento Enviado! ✅',
           'Seu comprovativo foi enviado com sucesso.\n\nVamos validar o pagamento em até 24 horas e activar seu Premium automaticamente.',
@@ -96,7 +96,7 @@ export default function PremiumScreen() {
           ]
         );
       } else {
-        Alert.alert('Erro', 'Não foi possível enviar o pagamento. Verifique sua conexão com a internet.');
+        Alert.alert('Aviso', result.message || 'Não foi possível enviar o pagamento.');
       }
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro ao enviar o pagamento.');
