@@ -184,6 +184,27 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Premium Section */}
+        <View style={styles.section}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.premiumCard,
+              pressed && styles.premiumCardPressed,
+            ]}
+            onPress={() => router.push('/screens/PremiumScreen')}>
+            <View style={styles.premiumContent}>
+              <Text style={styles.premiumEmoji}>💎</Text>
+              <View style={styles.premiumTextContainer}>
+                <Text style={styles.premiumTitle}>Confere Premium</Text>
+                <Text style={styles.premiumSubtitle}>
+                  Sem anúncios, backup automático e mais
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#FFD700" />
+            </View>
+          </Pressable>
+        </View>
+
         {/* Storage Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Armazenamento</Text>
@@ -478,6 +499,44 @@ const styles = StyleSheet.create({
   },
   actionButtonDescriptionSecondary: {
     color: '#999999',
+  },
+  premiumCard: {
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#5E35B1',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#5E35B1',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  premiumCardPressed: {
+    opacity: 0.9,
+  },
+  premiumContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  premiumEmoji: {
+    fontSize: 40,
+    marginRight: 16,
+  },
+  premiumTextContainer: {
+    flex: 1,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  premiumSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   infoCard: {
     backgroundColor: '#FFFFFF',
