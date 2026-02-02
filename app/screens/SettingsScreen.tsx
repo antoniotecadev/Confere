@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
   premiumCard: {
-    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundColor: '#5E35B1',
     borderRadius: 16,
     padding: 20,
     shadowColor: '#5E35B1',
