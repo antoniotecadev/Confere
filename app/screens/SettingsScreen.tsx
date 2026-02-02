@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -335,6 +336,19 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Desenvolvedor</Text>
+              <Text style={styles.infoValue}>António Teca</Text>
+            </View>
+            <View style={styles.infoDivider} />
+            <Pressable 
+              style={styles.infoRow}
+              onPress={() => Linking.openURL('mailto:antonioteca@hotmail.com')}
+            >
+              <Text style={styles.infoLabel}>Contacto</Text>
+              <Text style={[styles.infoValue, styles.emailLink]}>antonioteca@hotmail.com</Text>
+            </Pressable>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Desenvolvido em</Text>
               <Text style={styles.infoValue}>Angola 🇦🇴</Text>
             </View>
@@ -564,6 +578,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333333',
+  },
+  emailLink: {
+    color: '#2196F3',
+    textDecorationLine: 'underline',
   },
   infoDivider: {
     height: 1,
