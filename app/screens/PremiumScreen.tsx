@@ -188,7 +188,6 @@ export default function PremiumScreen() {
           { icon: 'infinite-outline', text: 'Comparações ilimitadas' },
           { icon: 'stats-chart-outline', text: 'Relatórios avançados' },
           { icon: 'headset-outline', text: 'Suporte prioritário' },
-          { icon: 'sync-outline', text: 'Sincronização entre dispositivos' },
         ].map((benefit, index) => (
           <View key={index} style={styles.benefitRow}>
             <Ionicons name={benefit.icon as any} size={20} color="#4CAF50" style={styles.benefitIcon} />
