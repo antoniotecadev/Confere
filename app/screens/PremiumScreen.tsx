@@ -148,7 +148,7 @@ export default function PremiumScreen() {
           <Text style={styles.sectionTitle}>Seus Benefícios:</Text>
           {[
             { icon: 'close-circle-outline', text: 'Sem anúncios' },
-            { icon: 'cloud-upload-outline', text: 'Backup automático' },
+            { icon: 'cloud-upload-outline', text: 'Backup e restauro de dados' },
             { icon: 'infinite-outline', text: 'Comparações ilimitadas' },
             { icon: 'stats-chart-outline', text: 'Relatórios avançados' },
             { icon: 'headset-outline', text: 'Suporte prioritário' },
@@ -184,7 +184,7 @@ export default function PremiumScreen() {
         <Text style={styles.sectionTitle}>O que você ganha:</Text>
         {[
           { icon: 'close-circle-outline', text: 'Sem anúncios' },
-          { icon: 'cloud-upload-outline', text: 'Backup automático na nuvem' },
+          { icon: 'cloud-upload-outline', text: 'Backup e restauro de dados' },
           { icon: 'infinite-outline', text: 'Comparações ilimitadas' },
           { icon: 'stats-chart-outline', text: 'Relatórios avançados' },
           { icon: 'headset-outline', text: 'Suporte prioritário' },
