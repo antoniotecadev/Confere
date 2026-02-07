@@ -198,7 +198,7 @@ export default function SettingsScreen() {
               <View style={styles.premiumTextContainer}>
                 <Text style={styles.premiumTitle}>Confere Premium</Text>
                 <Text style={styles.premiumSubtitle}>
-                  Sem anúncios, backup automático e mais
+                  Sem anúncios, backup e mais
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color="#FFD700" />
