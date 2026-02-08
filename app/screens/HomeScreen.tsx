@@ -204,6 +204,15 @@ export default function HomeScreen() {
       {/* Floating Action Buttons */}
       <Pressable
         style={({ pressed }) => [
+          styles.fabSenary,
+          pressed && styles.fabPressed,
+        ]}
+        onPress={() => router.push('/screens/DiscountCalculatorScreen')}>
+        <Ionicons name="calculator" size={24} color="#FFFFFF" />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [
           styles.fabQuinary,
           pressed && styles.fabPressed,
         ]}
@@ -375,7 +384,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 30,
-    right: 20,
+    left: 20,
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -393,7 +402,7 @@ const styles = StyleSheet.create({
   },
   fabSecondary: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 30,
     right: 20,
     width: 56,
     height: 56,
@@ -412,7 +421,7 @@ const styles = StyleSheet.create({
   },
   fabTertiary: {
     position: 'absolute',
-    bottom: 170,
+    bottom: 100,
     right: 20,
     width: 56,
     height: 56,
@@ -431,7 +440,7 @@ const styles = StyleSheet.create({
   },
   fabQuaternary: {
     position: 'absolute',
-    bottom: 240,
+    bottom: 170,
     right: 20,
     width: 56,
     height: 56,
@@ -450,12 +459,31 @@ const styles = StyleSheet.create({
   },
   fabQuinary: {
     position: 'absolute',
-    bottom: 310,
+    bottom: 240,
     right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabSenary: {
+    position: 'absolute',
+    bottom: 310,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#9C27B0',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
