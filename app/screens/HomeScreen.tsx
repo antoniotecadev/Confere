@@ -5,13 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Pressable,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 
@@ -113,30 +113,24 @@ export default function HomeScreen() {
   };
 
   const renderCartItem = ({ item }: { item: Cart }) => (
-    <View style={styles.cartItem}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.cartItemContent,
-          pressed && styles.cartItemPressed,
-        ]}
-        onPress={() => handleOpenCart(item.id)}>
-        <View style={styles.cartHeader}>
-          <Text style={styles.supermarketName}>{item.supermarket}</Text>
-          <Text style={styles.cartDate}>{formatDate(item.date)}</Text>
-        </View>
-        <View style={styles.cartFooter}>
-          <Text style={styles.itemCount}>
-            {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
-          </Text>
-          <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
-        </View>
-      </Pressable>
-      <Pressable
-        style={styles.deleteCartButton}
-        onPress={() => handleDeleteCart(item.id, item.supermarket)}>
-        <Text style={styles.deleteCartButtonText}>×</Text>
-      </Pressable>
-    </View>
+    <Pressable
+      style={({ pressed }) => [
+        styles.cartItem,
+        pressed && styles.cartItemPressed,
+      ]}
+      onPress={() => handleOpenCart(item.id)}
+      onLongPress={() => handleDeleteCart(item.id, item.supermarket)}>
+      <View style={styles.cartHeader}>
+        <Text style={styles.supermarketName}>{item.supermarket}</Text>
+        <Text style={styles.cartDate}>{formatDate(item.date)}</Text>
+      </View>
+      <View style={styles.cartFooter}>
+        <Text style={styles.itemCount}>
+          {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
+        </Text>
+        <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
+      </View>
+    </Pressable>
   );
 
   const renderEmptyState = () => (
@@ -153,9 +147,10 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Confere</Text>
           <Text style={styles.headerSubtitle}>Os meus carrinhos</Text>
+          <Text style={styles.headerHint}>Mantém pressionado para eliminar</Text>
         </View>
         <View style={styles.headerButtons}>
           <Pressable
@@ -202,50 +197,65 @@ export default function HomeScreen() {
       />
 
       {/* Floating Action Buttons */}
-      <Pressable
-        style={({ pressed }) => [
-          styles.fabSenary,
-          pressed && styles.fabPressed,
-        ]}
-        onPress={() => router.push('/screens/DiscountCalculatorScreen')}>
-        <Ionicons name="calculator" size={24} color="#FFFFFF" />
-      </Pressable>
+      <View style={[styles.fabContainer, { bottom: 310 }]}>
+        <Text style={styles.fabLabel}>Calculadora</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabSenary,
+            pressed && styles.fabPressed,
+          ]}
+          onPress={() => router.push('/screens/DiscountCalculatorScreen')}>
+          <Ionicons name="calculator" size={24} color="#FFFFFF" />
+        </Pressable>
+      </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fabQuinary,
-          pressed && styles.fabPressed,
-        ]}
-        onPress={() => router.push('/screens/BudgetScreen')}>
-        <Ionicons name="wallet" size={24} color="#FFFFFF" />
-      </Pressable>
+      <View style={[styles.fabContainer, { bottom: 240 }]}>
+        <Text style={styles.fabLabel}>Orçamento</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabQuinary,
+            pressed && styles.fabPressed,
+          ]}
+          onPress={() => router.push('/screens/BudgetScreen')}>
+          <Ionicons name="wallet" size={24} color="#FFFFFF" />
+        </Pressable>
+      </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fabQuaternary,
-          pressed && styles.fabPressed,
-        ]}
-        onPress={() => router.push('/screens/FavoritesScreen')}>
-        <Ionicons name="star" size={24} color="#FFFFFF" />
-      </Pressable>
+      <View style={[styles.fabContainer, { bottom: 170 }]}>
+        <Text style={styles.fabLabel}>Favoritos</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabQuaternary,
+            pressed && styles.fabPressed,
+          ]}
+          onPress={() => router.push('/screens/FavoritesScreen')}>
+          <Ionicons name="star" size={24} color="#FFFFFF" />
+        </Pressable>
+      </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fabTertiary,
-          pressed && styles.fabPressed,
-        ]}
-        onPress={() => router.push('/screens/ShoppingListScreen')}>
-        <Ionicons name="list" size={24} color="#FFFFFF" />
-      </Pressable>
+      <View style={[styles.fabContainer, { bottom: 100 }]}>
+        <Text style={styles.fabLabel}>Lista de Compras</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabTertiary,
+            pressed && styles.fabPressed,
+          ]}
+          onPress={() => router.push('/screens/ShoppingListScreen')}>
+          <Ionicons name="list" size={24} color="#FFFFFF" />
+        </Pressable>
+      </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fabSecondary,
-          pressed && styles.fabPressed,
-        ]}
-        onPress={() => router.push('/screens/PriceComparisonScreen')}>
-        <Ionicons name="pricetags" size={24} color="#FFFFFF" />
-      </Pressable>
+      <View style={[styles.fabContainer, { bottom: 30 }]}>
+        <Text style={styles.fabLabel}>Comparação</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fabSecondary,
+            pressed && styles.fabPressed,
+          ]}
+          onPress={() => router.push('/screens/PriceComparisonScreen')}>
+          <Ionicons name="pricetags" size={24} color="#FFFFFF" />
+        </Pressable>
+      </View>
 
       <Pressable
         style={({ pressed }) => [
@@ -279,9 +289,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 4,
   },
+  headerLeft: {
+    flex: 1,
+  },
   headerSubtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
+  },
+  headerHint: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   headerButtons: {
     flexDirection: 'row',
@@ -309,7 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
-    flexDirection: 'row',
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -318,10 +337,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  cartItemContent: {
-    flex: 1,
-    padding: 16,
   },
   cartItemPressed: {
     opacity: 0.7,
@@ -400,10 +415,23 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  fabSecondary: {
+  fabContainer: {
     position: 'absolute',
-    bottom: 30,
     right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  fabLabel: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    color: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fabSecondary: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -420,9 +448,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabTertiary: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -439,9 +464,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabQuaternary: {
-    position: 'absolute',
-    bottom: 170,
-    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -458,9 +480,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabQuinary: {
-    position: 'absolute',
-    bottom: 240,
-    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -477,9 +496,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabSenary: {
-    position: 'absolute',
-    bottom: 310,
-    right: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -499,19 +515,6 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
   fabIcon: {
-    fontSize: 32,
-    color: '#FFFFFF',
-    fontWeight: '300',
-  },
-  deleteCartButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 50,
-    backgroundColor: '#F44336',
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  deleteCartButtonText: {
     fontSize: 32,
     color: '#FFFFFF',
     fontWeight: '300',
