@@ -148,10 +148,16 @@ export default function PremiumScreen() {
           <Text style={styles.sectionTitle}>Seus Benefícios:</Text>
           {[
             { icon: 'close-circle-outline', text: 'Sem anúncios' },
-            { icon: 'cloud-upload-outline', text: 'Backup e restauro de dados' },
-            { icon: 'infinite-outline', text: 'Comparações ilimitadas' },
-            { icon: 'stats-chart-outline', text: 'Relatórios avançados' },
-            { icon: 'headset-outline', text: 'Suporte prioritário' },
+            { icon: 'infinite-outline', text: 'Comparações e carrinhos ilimitados' },
+            { icon: 'notifications-outline', text: 'Alertas de preço personalizados' },
+            { icon: 'trending-up-outline', text: 'Histórico e tendências de preço' },
+            { icon: 'share-social-outline', text: 'Partilha avançada via WhatsApp' },
+            { icon: 'camera-outline', text: 'Armazenamento ilimitado de fotos' },
+            { icon: 'stats-chart-outline', text: 'Estatísticas e gráficos detalhados' },
+            { icon: 'cloud-upload-outline', text: 'Backup automático na nuvem' },
+            { icon: 'calculator-outline', text: 'Calculadora de descontos avançada' },
+            { icon: 'download-outline', text: 'Exportação de dados (Excel/PDF)' },
+            { icon: 'headset-outline', text: 'Suporte prioritário 24/7' },
           ].map((benefit, index) => (
             <View key={index} style={styles.benefitRow}>
               <Ionicons name={benefit.icon as any} size={20} color="#4CAF50" style={styles.benefitIcon} />
@@ -184,10 +190,17 @@ export default function PremiumScreen() {
         <Text style={styles.sectionTitle}>O que você ganha:</Text>
         {[
           { icon: 'close-circle-outline', text: 'Sem anúncios' },
-          { icon: 'cloud-upload-outline', text: 'Backup e restauro de dados' },
-          { icon: 'infinite-outline', text: 'Comparações ilimitadas' },
-          { icon: 'stats-chart-outline', text: 'Relatórios avançados' },
-          { icon: 'headset-outline', text: 'Suporte prioritário' },
+          { icon: 'infinite-outline', text: 'Comparações e carrinhos ilimitados' },
+          { icon: 'notifications-outline', text: 'Alertas de preço personalizados' },
+          { icon: 'trending-up-outline', text: 'Histórico e tendências de preço' },
+          { icon: 'share-social-outline', text: 'Partilha avançada via WhatsApp' },
+          { icon: 'camera-outline', text: 'Armazenamento ilimitado de fotos' },
+          { icon: 'stats-chart-outline', text: 'Estatísticas e gráficos detalhados' },
+          { icon: 'cloud-upload-outline', text: 'Backup automático na nuvem' },
+          { icon: 'calculator-outline', text: 'Calculadora de descontos avançada' },
+          { icon: 'ellipsis-horizontal-outline', text: 'E muito mais...'}
+          // { icon: 'download-outline', text: 'Exportação de dados (Excel/PDF)' },
+          // { icon: 'headset-outline', text: 'Suporte prioritário 24/7' },
         ].map((benefit, index) => (
           <View key={index} style={styles.benefitRow}>
             <Ionicons name={benefit.icon as any} size={20} color="#4CAF50" style={styles.benefitIcon} />
