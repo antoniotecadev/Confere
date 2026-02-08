@@ -1,16 +1,18 @@
 import { CartsStorage } from '@/utils/carts-storage';
 import { Comparison, ComparisonsStorage } from '@/utils/comparisons-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Animated,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 export default function ComparisonScreen() {
@@ -117,6 +119,44 @@ export default function ComparisonScreen() {
     fadeAnim.setValue(0);
   };
 
+  const handleShare = async () => {
+    const charged = parseFloat(chargedTotal);
+    const statusEmoji = matches ? '✅' : '⚠️';
+    const statusText = matches ? 'CONFERE!' : 'NÃO CONFERE!';
+    
+    let message = `🛒 CONFERE - Comparação de Compra\n\n`;
+    message += `${statusEmoji} ${statusText}\n\n`;
+    message += `📍 Supermercado: ${supermarket}\n`;
+    message += `📅 Data: ${new Date().toLocaleDateString('pt-PT')}\n\n`;
+    message += `💰 Total Calculado: ${formatCurrency(calculatedTotal)}\n`;
+    message += `🧾 Total Cobrado: ${formatCurrency(charged)}\n`;
+    message += `━━━━━━━━━━━━━━━━\n`;
+    
+    if (matches) {
+      message += `✓ Perfeito! O valor está correto.\n`;
+    } else {
+      message += `⚠️ Diferença: ${difference > 0 ? '+' : ''}${formatCurrency(Math.abs(difference))}\n\n`;
+      if (difference > 0) {
+        message += `❌ Estão a cobrar ${formatCurrency(Math.abs(difference))} A MAIS!\n`;
+      } else {
+        message += `✓ Estão a cobrar ${formatCurrency(Math.abs(difference))} a menos\n`;
+      }
+    }
+    
+    message += `\n━━━━━━━━━━━━━━━━\n`;
+    message += `📱 Gerado com app CONFERE\n`;
+    message += `Controla os teus gastos!`;
+
+    try {
+      await Share.share({
+        message: message,
+        title: 'Comparação de Compra - Confere',
+      });
+    } catch (error) {
+      console.error('Erro ao compartilhar:', error);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('pt-AO', {
       minimumFractionDigits: 2,
@@ -185,7 +225,11 @@ export default function ComparisonScreen() {
                 styles.resultHeader,
                 matches ? styles.resultHeaderSuccess : styles.resultHeaderWarning,
               ]}>
-              <Text style={styles.resultIcon}>{matches ? '✅' : '⚠️'}</Text>
+              <Ionicons 
+                name={matches ? 'checkmark-circle' : 'alert-circle'} 
+                size={64} 
+                color="#FFFFFF" 
+              />
               <Text style={styles.resultTitle}>
                 {matches ? 'Confere!' : 'Não confere!'}
               </Text>
@@ -208,8 +252,8 @@ export default function ComparisonScreen() {
                 <View style={styles.messageBox}>
                   <Text style={styles.messageText}>
                     {difference > 0
-                      ? `Pagaste ${formatCurrency(Math.abs(difference))} a mais do que devias.`
-                      : `Pagaste ${formatCurrency(Math.abs(difference))} a menos do que devias.`}
+                      ? `O valor cobrado é ${formatCurrency(Math.abs(difference))} a mais do que devia.`
+                      : `O valor cobrado é ${formatCurrency(Math.abs(difference))} a menos do que devia.`}
                   </Text>
                 </View>
               )}
@@ -217,14 +261,23 @@ export default function ComparisonScreen() {
               {matches && (
                 <View style={[styles.messageBox, styles.messageBoxSuccess]}>
                   <Text style={styles.messageTextSuccess}>
-                    Perfeito! O valor cobrado está correto. 👍
+                    Perfeito! O valor cobrado está correto.
                   </Text>
                 </View>
               )}
             </View>
 
+            {/* Share Button */}
+            <Pressable style={styles.shareButton} onPress={handleShare}>
+              <Ionicons name="share-social" size={20} color="#FFFFFF" />
+              <Text style={styles.shareButtonText}>Compartilhar Comparação</Text>
+            </Pressable>
+
             <View style={styles.proofSection}>
-              <Text style={styles.proofTitle}>📋 As tuas provas:</Text>
+              <View style={styles.proofHeader}>
+                <Ionicons name="clipboard" size={20} color="#666666" />
+                <Text style={styles.proofTitle}>As tuas provas:</Text>
+              </View>
               <Text style={styles.proofItem}>• Supermercado: {supermarket}</Text>
               <Text style={styles.proofItem}>
                 • Data: {new Date().toLocaleDateString('pt-PT')}
@@ -427,16 +480,37 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     lineHeight: 24,
   },
+  shareButton: {
+    backgroundColor: '#25D366',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    marginHorizontal: 20,
+    marginVertical: 16,
+    borderRadius: 12,
+  },
+  shareButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   proofSection: {
     backgroundColor: '#F5F5F5',
     padding: 20,
     gap: 8,
   },
+  proofHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
   proofTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333333',
-    marginBottom: 8,
   },
   proofItem: {
     fontSize: 14,
