@@ -336,15 +336,19 @@ export default function ComparisonScreen() {
             <View
               style={[
                 styles.resultHeader,
-                matches ? styles.resultHeaderSuccess : styles.resultHeaderWarning,
+                matches 
+                  ? styles.resultHeaderSuccess 
+                  : difference > 0 
+                    ? styles.resultHeaderWarning 
+                    : styles.resultHeaderInfo,
               ]}>
               <Ionicons 
-                name={matches ? 'checkmark-circle' : 'alert-circle'} 
+                name={matches ? 'checkmark-circle' : difference > 0 ? 'alert-circle' : 'information-circle'} 
                 size={64} 
                 color="#FFFFFF" 
               />
               <Text style={styles.resultTitle}>
-                {matches ? 'Confere!' : 'Não confere!'}
+                {matches ? 'Confere!' : difference > 0 ? 'Não confere!' : 'Cobraram a menos!'}
               </Text>
             </View>
 
@@ -594,6 +598,9 @@ const styles = StyleSheet.create({
   },
   resultHeaderWarning: {
     backgroundColor: '#FF9800',
+  },
+  resultHeaderInfo: {
+    backgroundColor: '#2196F3',
   },
   resultIcon: {
     fontSize: 64,

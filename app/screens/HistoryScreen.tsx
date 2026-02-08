@@ -59,10 +59,10 @@ export default function HistoryScreen() {
     // Aplicar filtro de status
     switch (filter) {
       case 'correct':
-        filtered = filtered.filter(comp => comp.matches);
+        filtered = filtered.filter(comp => comp.matches || comp.difference < 0);
         break;
       case 'errors':
-        filtered = filtered.filter(comp => !comp.matches);
+        filtered = filtered.filter(comp => !comp.matches && comp.difference > 0);
         break;
     }
 
@@ -135,14 +135,27 @@ export default function HistoryScreen() {
             <Ionicons name="storefront" size={20} color="#2196F3" />
             <Text style={styles.supermarketName}>{item.supermarket}</Text>
           </View>
-          <View style={[styles.statusBadge, item.matches ? styles.statusBadgeSuccess : styles.statusBadgeError]}>
+          <View style={[
+            styles.statusBadge, 
+            item.matches 
+              ? styles.statusBadgeSuccess 
+              : item.difference > 0 
+                ? styles.statusBadgeError 
+                : styles.statusBadgeInfo
+          ]}>
             <Ionicons 
-              name={item.matches ? "checkmark-circle" : "close-circle"} 
+              name={
+                item.matches 
+                  ? "checkmark-circle" 
+                  : item.difference > 0 
+                    ? "close-circle" 
+                    : "information-circle"
+              } 
               size={16} 
               color="#FFFFFF" 
             />
             <Text style={styles.statusBadgeText}>
-              {item.matches ? 'Correto' : 'Erro'}
+              {item.matches ? 'Correto' : item.difference > 0 ? 'Erro' : 'A menos'}
             </Text>
           </View>
         </View>
@@ -159,9 +172,9 @@ export default function HistoryScreen() {
           </View>
 
           {!item.matches && (
-            <View style={styles.differenceContainer}>
-              <Ionicons name="alert-circle" size={16} color="#F44336" />
-              <Text style={styles.differenceText}>
+            <View style={[styles.differenceContainer, item.difference > 0 ? { backgroundColor: '#FFEBEE' } : { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="alert-circle" size={16} color={item.difference > 0 ? "#F44336" : "#2196F3"} />
+              <Text style={[styles.differenceText, item.difference > 0 ? { color: '#F44336' } : { color: '#2196F3' }]}>
                 Diferença: {formatCurrency(Math.abs(item.difference))}
                 {item.difference > 0 ? ' (cobrado a mais)' : ' (cobrado a menos)'}
               </Text>
@@ -236,7 +249,7 @@ export default function HistoryScreen() {
             color={selectedFilter === 'correct' ? '#FFFFFF' : '#4CAF50'} 
           />
           <Text style={[styles.filterButtonText, selectedFilter === 'correct' && styles.filterButtonTextActive]}>
-            Corretos ({comparisons.filter(c => c.matches).length})
+            Corretos ({comparisons.filter(c => c.matches || c.difference < 0).length})
           </Text>
         </Pressable>
 
@@ -249,7 +262,7 @@ export default function HistoryScreen() {
             color={selectedFilter === 'errors' ? '#FFFFFF' : '#F44336'} 
           />
           <Text style={[styles.filterButtonText, selectedFilter === 'errors' && styles.filterButtonTextActive]}>
-            Erros ({comparisons.filter(c => !c.matches).length})
+            Erros ({comparisons.filter(c => !c.matches && c.difference > 0).length})
           </Text>
         </Pressable>
       </View>
@@ -315,15 +328,29 @@ export default function HistoryScreen() {
                     <Text style={styles.modalLabel}>Status:</Text>
                     <View style={[
                       styles.statusBadge, 
-                      selectedComparison.matches ? styles.statusBadgeSuccess : styles.statusBadgeError
+                      selectedComparison.matches 
+                        ? styles.statusBadgeSuccess 
+                        : selectedComparison.difference > 0 
+                          ? styles.statusBadgeError 
+                          : styles.statusBadgeInfo
                     ]}>
                       <Ionicons 
-                        name={selectedComparison.matches ? "checkmark-circle" : "close-circle"} 
+                        name={
+                          selectedComparison.matches 
+                            ? "checkmark-circle" 
+                            : selectedComparison.difference > 0 
+                              ? "close-circle" 
+                              : "information-circle"
+                        } 
                         size={16} 
                         color="#FFFFFF" 
                       />
                       <Text style={styles.statusBadgeText}>
-                        {selectedComparison.matches ? 'Correto' : 'Erro Detectado'}
+                        {selectedComparison.matches 
+                          ? 'Correto' 
+                          : selectedComparison.difference > 0 
+                            ? 'Erro Detectado' 
+                            : 'Cobraram a menos'}
                       </Text>
                     </View>
                   </View>
@@ -333,14 +360,17 @@ export default function HistoryScreen() {
                       <View style={styles.modalDivider} />
                       <View style={styles.modalRow}>
                         <Text style={styles.modalLabel}>Diferença:</Text>
-                        <Text style={[styles.modalValue, styles.modalValueError]}>
+                        <Text style={[styles.modalValue, selectedComparison.difference > 0 ? { color: '#F44336' } : { color: '#2196F3' }]}>
                           {formatCurrency(Math.abs(selectedComparison.difference))}
                         </Text>
                       </View>
-                      <Text style={styles.modalNote}>
+                      <Text style={[
+                        styles.modalNote,
+                        selectedComparison.difference > 0 ? { color: '#F44336' } : { color: '#2196F3' }
+                      ]}>
                         {selectedComparison.difference > 0 
                           ? '⚠️ Foi cobrado a mais do que o esperado' 
-                          : '⚠️ Foi cobrado a menos do que o esperado'}
+                          : 'ℹ️ Foi cobrado a menos do que o esperado'}
                       </Text>
                     </>
                   )}
@@ -576,6 +606,9 @@ const styles = StyleSheet.create({
   statusBadgeError: {
     backgroundColor: '#F44336',
   },
+  statusBadgeInfo: {
+    backgroundColor: '#2196F3',
+  },
   statusBadgeText: {
     fontSize: 12,
     fontWeight: '600',
@@ -597,7 +630,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFEBEE',
     padding: 8,
     borderRadius: 8,
     marginTop: 4,
@@ -605,7 +637,6 @@ const styles = StyleSheet.create({
   differenceText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F44336',
     flex: 1,
   },
   emptyState: {
@@ -674,9 +705,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
   },
-  modalValueError: {
-    color: '#F44336',
-  },
   modalDivider: {
     height: 1,
     backgroundColor: '#F0F0F0',
@@ -684,9 +712,14 @@ const styles = StyleSheet.create({
   },
   modalNote: {
     fontSize: 14,
-    color: '#F44336',
     fontStyle: 'italic',
     marginTop: 8,
+  },
+  modalNoteError: {
+    color: '#F44336',
+  },
+  modalNoteInfo: {
+    color: '#2196F3',
   },
   modalButton: {
     backgroundColor: '#2196F3',
