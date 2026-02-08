@@ -1,3 +1,4 @@
+import { useAudioFeedback } from '@/context/AudioFeedbackProvider';
 import { CartsStorage } from '@/utils/carts-storage';
 import { Comparison, ComparisonsStorage } from '@/utils/comparisons-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,8 +22,10 @@ import {
 export default function ComparisonScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const cartId = params.cartId as string | undefined;
+  const { playPositiveSound, playNegativeSound } = useAudioFeedback();
 
+  const cartId = params.cartId as string | undefined;
+  
   const [supermarket, setSupermarket] = useState('');
   const [calculatedTotal, setCalculatedTotal] = useState(0);
   const [chargedTotal, setChargedTotal] = useState('');
@@ -90,6 +93,15 @@ export default function ComparisonScreen() {
     setDifference(diff);
     setMatches(doesMatch);
     setHasCompared(true);
+
+    // Tocar som de feedback
+    if (doesMatch) {
+      playPositiveSound(); // Tudo certo!
+    } else if (diff > 0) {
+      playNegativeSound(); // Cobraram a mais!
+    } else {
+      playPositiveSound(); // Cobraram a menos
+    }
 
     // Animação de fade in do resultado
     Animated.timing(fadeAnim, {
