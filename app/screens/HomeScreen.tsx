@@ -185,6 +185,15 @@ export default function HomeScreen() {
       {/* Floating Action Buttons */}
       <Pressable
         style={({ pressed }) => [
+          styles.fabTertiary,
+          pressed && styles.fabPressed,
+        ]}
+        onPress={() => router.push('/screens/ShoppingListScreen')}>
+        <Ionicons name="list" size={24} color="#FFFFFF" />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [
           styles.fabSecondary,
           pressed && styles.fabPressed,
         ]}
@@ -353,6 +362,25 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabTertiary: {
+    position: 'absolute',
+    bottom: 170,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF9800',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
