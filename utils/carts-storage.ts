@@ -17,6 +17,7 @@ export interface Cart {
   date: string;
   items: CartItem[];
   total: number;
+  dailyBudget?: number;
 }
 
 export const CartsStorage = {

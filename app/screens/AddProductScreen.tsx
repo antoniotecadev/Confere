@@ -31,6 +31,10 @@ export default function AddProductScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [favoriteProducts, setFavoriteProducts] = useState<Set<string>>(new Set());
+  
+  // Orçamento diário do carrinho
+  const currentTotal = parseFloat(params.currentTotal as string) || 0;
+  const dailyBudget = params.dailyBudget ? parseFloat(params.dailyBudget as string) : undefined;
 
   useEffect(() => {
     loadFavorites();
@@ -169,8 +173,60 @@ export default function AddProductScreen() {
     if (!validateForm()) return;
 
     const priceValue = parseFloat(price);
+    const quantityValue = parseInt(quantity);
+    const productTotal = priceValue * quantityValue;
     const supermarketName = params.supermarket as string | undefined;
 
+    // Verificar orçamento diário primeiro
+    if (dailyBudget && dailyBudget > 0) {
+      const newTotal = currentTotal + productTotal;
+      
+      if (newTotal > dailyBudget) {
+        const exceeded = newTotal - dailyBudget;
+        Alert.alert(
+          '⚠️ Orçamento Diário',
+          `Você definiu ${dailyBudget.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz para hoje.\n\n` +
+          `Carrinho atual: ${currentTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz\n` +
+          `Este produto: ${productTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz\n` +
+          `Novo total: ${newTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz\n\n` +
+          `Você vai ultrapassar em ${exceeded.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz!`,
+          [
+            {
+              text: 'Cancelar',
+              style: 'cancel',
+            },
+            {
+              text: 'Adicionar Mesmo Assim',
+              onPress: () => checkPriceAlert(priceValue, supermarketName),
+            },
+          ]
+        );
+        return;
+      } else if (newTotal >= dailyBudget * 0.8) {
+        // Alerta aos 80% do orçamento
+        const percentage = (newTotal / dailyBudget) * 100;
+        Alert.alert(
+          '💡 Atenção ao Orçamento',
+          `Você já gastou ${percentage.toFixed(0)}% do seu orçamento diário!\n\n` +
+          `Orçamento: ${dailyBudget.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz\n` +
+          `Novo total: ${newTotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz\n` +
+          `Restante: ${(dailyBudget - newTotal).toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz`,
+          [
+            {
+              text: 'OK, Entendi',
+              onPress: () => checkPriceAlert(priceValue, supermarketName),
+            },
+          ]
+        );
+        return;
+      }
+    }
+
+    // Se passou da verificação de orçamento, verificar alerta de preço
+    checkPriceAlert(priceValue, supermarketName);
+  };
+
+  const checkPriceAlert = async (priceValue: number, supermarketName: string | undefined) => {
     // Verificar alerta de preço se soubermos o supermercado
     if (supermarketName) {
       const alert = await PriceAlertService.analyzePriceInSupermarket(

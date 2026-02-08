@@ -2,17 +2,17 @@ import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 export default function CartScreen() {
@@ -23,6 +23,7 @@ export default function CartScreen() {
   const [supermarket, setSupermarket] = useState('');
   const [items, setItems] = useState<CartItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [dailyBudget, setDailyBudget] = useState<number | undefined>(undefined);
   const [isNewCart, setIsNewCart] = useState(true);
   const [showSupermarketModal, setShowSupermarketModal] = useState(false);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
@@ -74,6 +75,7 @@ export default function CartScreen() {
               date: new Date().toISOString(),
               items: updatedItems,
               total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+              dailyBudget,
             };
             await CartsStorage.updateCart(updatedCart);
           }
@@ -100,6 +102,7 @@ export default function CartScreen() {
         setSupermarket(cart.supermarket);
         setItems(cart.items);
         setTotal(cart.total);
+        setDailyBudget(cart.dailyBudget);
         setIsNewCart(false);
       }
     } catch (error) {
@@ -131,6 +134,7 @@ export default function CartScreen() {
         date: new Date().toISOString(),
         items,
         total,
+        dailyBudget,
       };
 
       if (isNewCart) {
@@ -167,6 +171,7 @@ export default function CartScreen() {
         date: new Date().toISOString(),
         items: [],
         total: 0,
+        dailyBudget,
       };
       
       try {
@@ -185,6 +190,8 @@ export default function CartScreen() {
       params: { 
         id: currentCartId,
         supermarket: supermarket,
+        currentTotal: total.toString(),
+        dailyBudget: dailyBudget?.toString(),
       },
     } as any);
   };
@@ -223,6 +230,7 @@ export default function CartScreen() {
         date: new Date().toISOString(),
         items: updatedItems,
         total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        dailyBudget,
       };
       
       try {
@@ -269,6 +277,7 @@ export default function CartScreen() {
               date: new Date().toISOString(),
               items: updatedItems,
               total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+              dailyBudget,
             };
             
             try {
@@ -361,6 +370,46 @@ export default function CartScreen() {
 
       {/* Footer with Total and Add Button */}
       <View style={styles.footer}>
+        {/* Daily Budget Progress */}
+        {dailyBudget && dailyBudget > 0 && (
+          <View style={styles.budgetProgressContainer}>
+            <View style={styles.budgetProgressHeader}>
+              <Text style={styles.budgetProgressLabel}>
+                💰 Orçamento de Hoje
+              </Text>
+              <Text style={styles.budgetProgressText}>
+                {formatCurrency(total)} de {formatCurrency(dailyBudget)}
+              </Text>
+            </View>
+            <View style={styles.budgetProgressBarBg}>
+              <View
+                style={[
+                  styles.budgetProgressBarFill,
+                  {
+                    width: `${Math.min((total / dailyBudget) * 100, 100)}%`,
+                    backgroundColor:
+                      total > dailyBudget
+                        ? '#f44336'
+                        : total >= dailyBudget * 0.8
+                        ? '#FF9800'
+                        : '#4CAF50',
+                  },
+                ]}
+              />
+            </View>
+            {total >= dailyBudget * 0.8 && (
+              <Text style={[
+                styles.budgetWarningText,
+                { color: total > dailyBudget ? '#f44336' : '#FF9800' }
+              ]}>
+                {total > dailyBudget
+                  ? `⚠️ Você ultrapassou ${formatCurrency(total - dailyBudget)}`
+                  : `💡 Restam ${formatCurrency(dailyBudget - total)}`}
+              </Text>
+            )}
+          </View>
+        )}
+        
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
@@ -389,25 +438,46 @@ export default function CartScreen() {
             setShowSupermarketModal(false);
           }
         }}>
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => {
-            if (supermarket.trim()) {
-              setShowSupermarketModal(false);
-            }
-          }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}>
           <Pressable 
-            style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Nome do Supermercado</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Ex: Shoprite, Kero, Candando..."
-              value={supermarket}
-              onChangeText={setSupermarket}
-              autoFocus
-            />
-            <View style={styles.modalActions}>
+            style={styles.modalOverlay}
+            onPress={() => {
+              if (supermarket.trim()) {
+                setShowSupermarketModal(false);
+              }
+            }}>
+            <Pressable 
+              style={styles.modalContent}
+              onPress={(e) => e.stopPropagation()}>
+              <Text style={styles.modalTitle}>Novo Carrinho</Text>
+              
+              <Text style={styles.inputLabel}>Nome do Supermercado *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Ex: Shoprite, Kero, Candando..."
+                value={supermarket}
+                onChangeText={setSupermarket}
+                autoFocus
+              />
+              
+              <Text style={styles.inputLabel}>Orçamento para hoje (opcional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Ex: 10000 Kz"
+                value={dailyBudget?.toString() || ''}
+                onChangeText={(text) => {
+                  const value = parseFloat(text);
+                  setDailyBudget(isNaN(value) ? undefined : value);
+                }}
+                keyboardType="decimal-pad"
+              />
+              <Text style={styles.inputHelper}>
+                💡 Defina quanto quer gastar hoje. Vamos alertar se ultrapassar!
+              </Text>
+              
+              <View style={styles.modalActions}>
               <Pressable
                 style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => {
@@ -432,6 +502,7 @@ export default function CartScreen() {
                     date: new Date().toISOString(),
                     items: [],
                     total: 0,
+                    dailyBudget,
                   };
                   
                   try {
@@ -449,6 +520,7 @@ export default function CartScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit Item Modal */}
@@ -691,6 +763,44 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
   },
+  budgetProgressContainer: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  budgetProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  budgetProgressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  budgetProgressText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  budgetProgressBarBg: {
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  budgetProgressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  budgetWarningText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
+  },
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -768,6 +878,12 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     marginBottom: 8,
+  },
+  inputHelper: {
+    fontSize: 12,
+    color: '#999999',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   modalActions: {
     flexDirection: 'row',
