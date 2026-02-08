@@ -1,12 +1,14 @@
 import { BudgetService } from '@/app/services/BudgetService';
 import { Cart, CartsStorage } from '@/utils/carts-storage';
 import { ComparisonsStorage } from '@/utils/comparisons-storage';
+import { getSupermarketLogo } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -120,15 +122,24 @@ export default function HomeScreen() {
       ]}
       onPress={() => handleOpenCart(item.id)}
       onLongPress={() => handleDeleteCart(item.id, item.supermarket)}>
-      <View style={styles.cartHeader}>
-        <Text style={styles.supermarketName}>{item.supermarket}</Text>
-        <Text style={styles.cartDate}>{formatDate(item.date)}</Text>
-      </View>
-      <View style={styles.cartFooter}>
-        <Text style={styles.itemCount}>
-          {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
-        </Text>
-        <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
+      <View style={styles.cartContent}>
+        <Image
+          source={getSupermarketLogo(item.supermarket)}
+          style={styles.supermarketLogo}
+          resizeMode="contain"
+        />
+        <View style={styles.cartInfo}>
+          <View style={styles.cartHeader}>
+            <Text style={styles.supermarketName}>{item.supermarket}</Text>
+            <Text style={styles.cartDate}>{formatDate(item.date)}</Text>
+          </View>
+          <View style={styles.cartFooter}>
+            <Text style={styles.itemCount}>
+              {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
+            </Text>
+            <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
+          </View>
+        </View>
       </View>
     </Pressable>
   );
@@ -337,6 +348,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  cartContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  supermarketLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+  },
+  cartInfo: {
+    flex: 1,
   },
   cartItemPressed: {
     opacity: 0.7,
