@@ -182,7 +182,10 @@ export default function CartScreen() {
     
     router.push({
       pathname: '/screens/AddProductScreen',
-      params: { id: currentCartId },
+      params: { 
+        id: currentCartId,
+        supermarket: supermarket,
+      },
     } as any);
   };
 

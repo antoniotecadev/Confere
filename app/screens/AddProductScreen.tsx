@@ -1,20 +1,21 @@
+import { PriceAlertService } from '@/app/services/PriceAlertService';
 import { PriceComparisonService } from '@/app/services/PriceComparisonService';
 import { CartItem } from '@/utils/carts-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 export default function AddProductScreen() {
@@ -148,9 +149,42 @@ export default function AddProductScreen() {
     return true;
   };
 
-  const handleSaveProduct = () => {
+  const handleSaveProduct = async () => {
     if (!validateForm()) return;
 
+    const priceValue = parseFloat(price);
+    const supermarketName = params.supermarket as string | undefined;
+
+    // Verificar alerta de preço se soubermos o supermercado
+    if (supermarketName) {
+      const alert = await PriceAlertService.analyzePriceInSupermarket(
+        name.trim(),
+        priceValue,
+        supermarketName
+      );
+
+      // Mostrar alert apenas para promoções ou avisos (não para preço normal)
+      if (alert && alert.type !== 'normal') {
+        Alert.alert(
+          alert.title,
+          alert.message,
+          [
+            {
+              text: 'Adicionar Produto',
+              onPress: () => saveProduct(),
+            },
+          ],
+          { cancelable: false }
+        );
+        return;
+      }
+    }
+
+    // Se não houver alert ou for preço normal, salvar direto
+    saveProduct();
+  };
+
+  const saveProduct = () => {
     const newProduct: CartItem = {
       id: Date.now().toString(),
       name: name.trim(),
