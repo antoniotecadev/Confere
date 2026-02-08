@@ -1,4 +1,5 @@
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
+import { supermarkets } from '@/utils/supermarkets';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,6 +10,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -453,13 +455,37 @@ export default function CartScreen() {
               onPress={(e) => e.stopPropagation()}>
               <Text style={styles.modalTitle}>Novo Carrinho</Text>
               
+              <Text style={styles.inputLabel}>Escolha Rápida (opcional)</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.supermarketsScrollView}
+                contentContainerStyle={styles.supermarketsScrollContent}>
+                {supermarkets.map((market) => (
+                  <Pressable
+                    key={market.id}
+                    style={[
+                      styles.supermarketChip,
+                      supermarket === market.name && styles.supermarketChipSelected
+                    ]}
+                    onPress={() => setSupermarket(market.name)}>
+                    <Image source={market.logo} style={styles.supermarketChipLogo} />
+                    <Text style={[
+                      styles.supermarketChipText,
+                      supermarket === market.name && styles.supermarketChipTextSelected
+                    ]}>
+                      {market.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              
               <Text style={styles.inputLabel}>Nome do Supermercado *</Text>
               <TextInput
                 style={styles.modalInput}
                 placeholder="Ex: Shoprite, Kero, Candando..."
                 value={supermarket}
                 onChangeText={setSupermarket}
-                autoFocus
               />
               
               <Text style={styles.inputLabel}>Orçamento para hoje (opcional)</Text>
@@ -941,5 +967,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 32,
     fontWeight: '300',
+  },
+  supermarketsScrollView: {
+    maxHeight: 90,
+    marginBottom: 8,
+  },
+  supermarketsScrollContent: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  supermarketChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  supermarketChipSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+  },
+  supermarketChipLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  supermarketChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  supermarketChipTextSelected: {
+    color: '#2196F3',
   },
 });
