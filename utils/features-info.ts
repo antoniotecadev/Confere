@@ -24,7 +24,8 @@ export const featuresInfo: FeatureInfo[] = [
       '1. Adiciona produtos ao carrinho durante as compras',
       '2. No final, insere o valor total cobrado',
       '3. Confere se há diferença',
-      '4. Guarda o talão e partilha se necessário',
+      '4. Anexa foto do talão para guardar prova',
+      '5. Partilha resultado se necessário',
     ],
   },
   {

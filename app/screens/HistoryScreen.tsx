@@ -3,14 +3,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 type FilterType = 'all' | 'correct' | 'errors';
@@ -23,6 +24,7 @@ export default function HistoryScreen() {
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
   const [selectedComparison, setSelectedComparison] = useState<Comparison | null>(null);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -342,6 +344,34 @@ export default function HistoryScreen() {
                       </Text>
                     </>
                   )}
+
+                  {/* Fotos do Talão */}
+                  {selectedComparison.receiptPhotos && selectedComparison.receiptPhotos.length > 0 && (
+                    <>
+                      <View style={styles.modalDivider} />
+                      <View style={styles.photosSection}>
+                        <View style={styles.photosSectionHeader}>
+                          <Ionicons name="camera" size={18} color="#666666" />
+                          <Text style={styles.photosSectionTitle}>
+                            Fotos do Talão ({selectedComparison.receiptPhotos.length})
+                          </Text>
+                        </View>
+                        <View style={styles.photosGrid}>
+                          {selectedComparison.receiptPhotos.map((uri, index) => (
+                            <Pressable
+                              key={index}
+                              style={styles.photoThumbnail}
+                              onPress={() => {
+                                setDetailsModalVisible(false);
+                                setTimeout(() => setSelectedPhotoIndex(index), 100);
+                              }}>
+                              <Image source={{ uri }} style={styles.photoThumbnailImage} />
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </View>
 
                 <Pressable
@@ -353,6 +383,39 @@ export default function HistoryScreen() {
             )}
           </View>
         </View>
+      </Modal>
+
+      {/* Modal de Visualização de Foto */}
+      <Modal
+        visible={selectedPhotoIndex !== null && !detailsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setSelectedPhotoIndex(null);
+          setDetailsModalVisible(true);
+        }}>
+        <Pressable 
+          style={styles.photoModalOverlay}
+          onPress={() => {
+            setSelectedPhotoIndex(null);
+            setDetailsModalVisible(true);
+          }}>
+          <Pressable
+            style={styles.photoModalClose}
+            onPress={() => {
+              setSelectedPhotoIndex(null);
+              setDetailsModalVisible(true);
+            }}>
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </Pressable>
+          {selectedPhotoIndex !== null && selectedComparison?.receiptPhotos && (
+            <Image
+              source={{ uri: selectedComparison.receiptPhotos[selectedPhotoIndex] }}
+              style={styles.photoModalImage}
+              resizeMode="contain"
+            />
+          )}
+        </Pressable>
       </Modal>
     </View>
   );
@@ -636,5 +699,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  photosSection: {
+    marginTop: 8,
+  },
+  photosSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  photosSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  photoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  photoModalImage: {
+    width: '100%',
+    height: '100%',
   },
 });

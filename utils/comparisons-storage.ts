@@ -11,6 +11,7 @@ export interface Comparison {
   chargedTotal: number;
   difference: number;
   matches: boolean;
+  receiptPhotos?: string[]; // URIs das fotos dos talões
 }
 
 export const ComparisonsStorage = {

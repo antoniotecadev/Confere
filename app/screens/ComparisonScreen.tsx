@@ -1,11 +1,14 @@
 import { CartsStorage } from '@/utils/carts-storage';
 import { Comparison, ComparisonsStorage } from '@/utils/comparisons-storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
+  Image,
+  Modal,
   Pressable,
   ScrollView,
   Share,
@@ -27,6 +30,8 @@ export default function ComparisonScreen() {
   const [difference, setDifference] = useState(0);
   const [matches, setMatches] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [receiptPhotos, setReceiptPhotos] = useState<string[]>([]);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (cartId) {
@@ -64,6 +69,7 @@ export default function ComparisonScreen() {
         setDifference(comparison.difference);
         setMatches(comparison.matches);
         setHasCompared(true);
+        setReceiptPhotos(comparison.receiptPhotos || []);
       }
     } catch (error) {
       console.error('Erro ao carregar comparação:', error);
@@ -117,6 +123,101 @@ export default function ComparisonScreen() {
     setDifference(0);
     setMatches(false);
     fadeAnim.setValue(0);
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Precisamos de permissão para usar a câmera.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const newPhotos = [...receiptPhotos, result.assets[0].uri];
+        setReceiptPhotos(newPhotos);
+        await updateComparisonPhotos(newPhotos);
+      }
+    } catch (error) {
+      console.error('Erro ao tirar foto:', error);
+      Alert.alert('Erro', 'Não foi possível tirar a foto.');
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão negada', 'Precisamos de permissão para acessar a galeria.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        allowsEditing: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const newPhotos = [...receiptPhotos, result.assets[0].uri];
+        setReceiptPhotos(newPhotos);
+        await updateComparisonPhotos(newPhotos);
+      }
+    } catch (error) {
+      console.error('Erro ao escolher imagem:', error);
+      Alert.alert('Erro', 'Não foi possível escolher a imagem.');
+    }
+  };
+
+  const handleAddPhoto = () => {
+    Alert.alert(
+      'Adicionar Foto do Talão',
+      'Escolhe como queres adicionar a foto:',
+      [
+        { text: 'Câmera', onPress: handleTakePhoto },
+        { text: 'Galeria', onPress: handlePickImage },
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleDeletePhoto = async (index: number) => {
+    Alert.alert(
+      'Eliminar Foto',
+      'Tens certeza que desejas eliminar esta foto?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const newPhotos = receiptPhotos.filter((_, i) => i !== index);
+            setReceiptPhotos(newPhotos);
+            await updateComparisonPhotos(newPhotos);
+          },
+        },
+      ]
+    );
+  };
+
+  const updateComparisonPhotos = async (photos: string[]) => {
+    if (!cartId) return;
+
+    try {
+      const comparison = await ComparisonsStorage.getComparisonByCartId(cartId);
+      if (comparison) {
+        const updatedComparison = { ...comparison, receiptPhotos: photos };
+        await ComparisonsStorage.saveComparison(updatedComparison);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar fotos:', error);
+    }
   };
 
   const handleShare = async () => {
@@ -288,10 +389,66 @@ export default function ComparisonScreen() {
               <Text style={styles.proofItem}>
                 • Total cobrado: {formatCurrency(parseFloat(chargedTotal))}
               </Text>
+
+              {/* Fotos do Talão */}
+              <View style={styles.photosSection}>
+                <View style={styles.photosSectionHeader}>
+                  <Ionicons name="camera" size={18} color="#666666" />
+                  <Text style={styles.photosSectionTitle}>Fotos do Talão:</Text>
+                </View>
+                
+                {receiptPhotos.length > 0 && (
+                  <View style={styles.photosGrid}>
+                    {receiptPhotos.map((uri, index) => (
+                      <Pressable
+                        key={index}
+                        style={styles.photoThumbnail}
+                        onPress={() => setSelectedPhotoIndex(index)}
+                        onLongPress={() => handleDeletePhoto(index)}>
+                        <Image source={{ uri }} style={styles.photoThumbnailImage} />
+                        <Pressable
+                          style={styles.photoDeleteButton}
+                          onPress={() => handleDeletePhoto(index)}>
+                          <Ionicons name="close-circle" size={24} color="#F44336" />
+                        </Pressable>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+
+                <Pressable style={styles.addPhotoButton} onPress={handleAddPhoto}>
+                  <Ionicons name="camera-outline" size={20} color="#2196F3" />
+                  <Text style={styles.addPhotoButtonText}>
+                    {receiptPhotos.length > 0 ? 'Adicionar Outra Foto' : 'Adicionar Foto do Talão'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </Animated.View>
         )}
       </ScrollView>
+
+      {/* Modal de Visualização de Foto */}
+      <Modal
+        visible={selectedPhotoIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPhotoIndex(null)}>
+        <View style={styles.photoModalOverlay}>
+          <Pressable
+            style={styles.photoModalClose}
+            onPress={() => setSelectedPhotoIndex(null)}>
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </Pressable>
+          {selectedPhotoIndex !== null && (
+            <Image
+              source={{ uri: receiptPhotos[selectedPhotoIndex] }}
+              style={styles.photoModalImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -516,5 +673,80 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     lineHeight: 20,
+  },
+  photosSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  photosSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  photosSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  photoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoDeleteButton: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+  },
+  addPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    borderStyle: 'dashed',
+  },
+  addPhotoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196F3',
+  },
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  photoModalImage: {
+    width: '100%',
+    height: '100%',
   },
 });
