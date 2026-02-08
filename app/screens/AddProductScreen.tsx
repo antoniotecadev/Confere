@@ -1,7 +1,7 @@
 import { FavoritesService } from '@/app/services/FavoritesService';
 import { PriceAlertService } from '@/app/services/PriceAlertService';
 import { PriceComparisonService } from '@/app/services/PriceComparisonService';
-import { CartItem } from '@/utils/carts-storage';
+import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -31,14 +31,28 @@ export default function AddProductScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [favoriteProducts, setFavoriteProducts] = useState<Set<string>>(new Set());
-  
-  // Orçamento diário do carrinho
-  const currentTotal = parseFloat(params.currentTotal as string) || 0;
-  const dailyBudget = params.dailyBudget ? parseFloat(params.dailyBudget as string) : undefined;
+  const [currentTotal, setCurrentTotal] = useState(0);
+  const [dailyBudget, setDailyBudget] = useState<number | undefined>(undefined);
+  const [supermarketName, setSupermarketName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     loadFavorites();
+    loadCartData();
   }, []);
+
+  const loadCartData = async () => {
+    const cartId = params.id as string;
+    try {
+      const cart = await CartsStorage.getCartById(cartId);
+      if (cart) {
+        setCurrentTotal(cart.total);
+        setDailyBudget(cart.dailyBudget);
+        setSupermarketName(cart.supermarket);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do carrinho:', error);
+    }
+  };
 
   useEffect(() => {
     if (name.length >= 2) {
@@ -121,7 +135,7 @@ export default function AddProductScreen() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
@@ -175,7 +189,6 @@ export default function AddProductScreen() {
     const priceValue = parseFloat(price);
     const quantityValue = parseInt(quantity);
     const productTotal = priceValue * quantityValue;
-    const supermarketName = params.supermarket as string | undefined;
 
     // Verificar orçamento diário primeiro
     if (dailyBudget && dailyBudget > 0) {
@@ -256,24 +269,44 @@ export default function AddProductScreen() {
     saveProduct();
   };
 
-  const saveProduct = () => {
-    const newProduct: CartItem = {
-      id: Date.now().toString(),
-      name: name.trim(),
-      price: parseFloat(price),
-      quantity: parseInt(quantity),
-      imageUri: imageUri || undefined,
-    };
+  const saveProduct = async () => {
+    const cartId = params.id as string;
+    
+    try {
+      // Buscar o carrinho atual
+      const cart = await CartsStorage.getCartById(cartId);
+      if (!cart) {
+        Alert.alert('Erro', 'Carrinho não encontrado.');
+        return;
+      }
 
-    // Passar o produto de volta para CartScreen e voltar
-    // Usar replace para garantir que o parâmetro seja passado corretamente
-    router.replace({
-      pathname: '/screens/CartScreen',
-      params: { 
-        id: params.id as string,
-        newProduct: JSON.stringify(newProduct),
-      },
-    } as any);
+      // Criar novo produto
+      const newProduct: CartItem = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        price: parseFloat(price),
+        quantity: parseInt(quantity),
+        imageUri: imageUri || undefined,
+      };
+
+      // Adicionar produto ao carrinho
+      const updatedItems = [...cart.items, newProduct];
+      const updatedCart: Cart = {
+        ...cart,
+        items: updatedItems,
+        total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        date: new Date().toISOString(),
+      };
+
+      // Salvar no AsyncStorage
+      await CartsStorage.updateCart(updatedCart);
+
+      // Voltar para CartScreen
+      router.back();
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o produto.');
+    }
   };
 
   return (

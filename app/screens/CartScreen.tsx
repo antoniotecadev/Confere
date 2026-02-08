@@ -1,7 +1,7 @@
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -26,7 +26,6 @@ export default function CartScreen() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [total, setTotal] = useState(0);
   const [dailyBudget, setDailyBudget] = useState<number | undefined>(undefined);
-  const [isNewCart, setIsNewCart] = useState(true);
   const [showSupermarketModal, setShowSupermarketModal] = useState(false);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -50,48 +49,16 @@ export default function CartScreen() {
     }
   }, [cartId]);
 
-  useEffect(() => {
-    // Verificar se há um novo produto nos parâmetros quando a tela recebe foco
-    const checkNewProduct = async () => {
-      if (params.newProduct) {
-        try {
-          const newProduct = JSON.parse(params.newProduct as string);
-          
-          // Buscar os items mais recentes do carrinho para evitar sobrescrever
-          let currentItems = items;
-          if (cartId) {
-            const cart = await CartsStorage.getCartById(cartId);
-            if (cart) {
-              currentItems = cart.items;
-            }
-          }
-          
-          const updatedItems = [...currentItems, newProduct];
-          setItems(updatedItems);
-          
-          // Salvar o carrinho atualizado imediatamente no AsyncStorage
-          if (cartId) {
-            const updatedCart: Cart = {
-              id: cartId,
-              supermarket,
-              date: new Date().toISOString(),
-              items: updatedItems,
-              total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
-              dailyBudget,
-            };
-            await CartsStorage.updateCart(updatedCart);
-          }
-          
-          // Limpar o parâmetro
-          router.setParams({ newProduct: undefined });
-        } catch (error) {
-          console.error('Erro ao processar novo produto:', error);
-        }
+  // Recarregar carrinho quando a tela recebe foco (voltando de AddProductScreen)
+  useFocusEffect(
+    useCallback(() => {
+      if (cartId) {
+        loadCart(cartId);
       }
-    };
+    }, [cartId])
+  );
 
-    checkNewProduct();
-  }, [params.newProduct]);
+
 
   useEffect(() => {
     calculateTotal();
@@ -105,7 +72,6 @@ export default function CartScreen() {
         setItems(cart.items);
         setTotal(cart.total);
         setDailyBudget(cart.dailyBudget);
-        setIsNewCart(false);
       }
     } catch (error) {
       console.error('Erro ao carregar carrinho:', error);
@@ -118,82 +84,19 @@ export default function CartScreen() {
     setTotal(newTotal);
   };
 
-  const handleSaveCart = async () => {
-    if (!supermarket.trim()) {
-      Alert.alert('Atenção', 'Por favor, informe o nome do supermercado.');
-      return;
-    }
 
-    if (items.length === 0) {
-      Alert.alert('Atenção', 'Adicione pelo menos um produto ao carrinho.');
-      return;
-    }
-
-    try {
-      const cart: Cart = {
-        id: cartId || Date.now().toString(),
-        supermarket,
-        date: new Date().toISOString(),
-        items,
-        total,
-        dailyBudget,
-      };
-
-      if (isNewCart) {
-        await CartsStorage.saveCart(cart);
-      } else {
-        await CartsStorage.updateCart(cart);
-      }
-
-      Alert.alert('Sucesso', 'Carrinho salvo com sucesso!', [
-        { text: 'OK', onPress: () => router.replace('/screens/HomeScreen') },
-      ]);
-    } catch (error) {
-      console.error('Erro ao salvar carrinho:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o carrinho.');
-    }
-  };
 
   const handleAddProduct = async () => {
-    // Se não tem cartId ainda, criar e salvar o carrinho antes de ir para AddProduct
-    let currentCartId = cartId;
-    
-    if (!currentCartId) {
-      if (!supermarket.trim()) {
-        Alert.alert('Atenção', 'Por favor, informe o nome do supermercado primeiro.');
-        setShowSupermarketModal(true);
-        return;
-      }
-      
-      // Criar novo carrinho com o nome do supermercado
-      currentCartId = Date.now().toString();
-      const newCart: Cart = {
-        id: currentCartId,
-        supermarket,
-        date: new Date().toISOString(),
-        items: [],
-        total: 0,
-        dailyBudget,
-      };
-      
-      try {
-        await CartsStorage.saveCart(newCart);
-        setCartId(currentCartId);
-        setIsNewCart(false);
-      } catch (error) {
-        console.error('Erro ao criar carrinho:', error);
-        Alert.alert('Erro', 'Não foi possível criar o carrinho.');
-        return;
-      }
+    if (!cartId) {
+      Alert.alert('Atenção', 'Por favor, informe o nome do supermercado primeiro.');
+      setShowSupermarketModal(true);
+      return;
     }
     
     router.push({
       pathname: '/screens/AddProductScreen',
       params: { 
-        id: currentCartId,
-        supermarket: supermarket,
-        currentTotal: total.toString(),
-        dailyBudget: dailyBudget?.toString(),
+        id: cartId,
       },
     } as any);
   };
@@ -349,12 +252,8 @@ export default function CartScreen() {
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </Pressable>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{supermarket || 'Novo Carrinho'}</Text>
-          <Pressable onPress={handleSaveCart}>
-            <Text style={styles.saveButton}>Salvar</Text>
-          </Pressable>
-        </View>
+        <Text style={styles.headerTitle}>{supermarket || 'Novo Carrinho'}</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Supermarket Banner */}
@@ -531,7 +430,7 @@ export default function CartScreen() {
                     return;
                   }
                   
-                  // Criar e salvar o carrinho imediatamente
+                  // Criar e salvar o carrinho pela ÚNICA vez aqui
                   const newCartId = Date.now().toString();
                   const newCart: Cart = {
                     id: newCartId,
@@ -545,7 +444,6 @@ export default function CartScreen() {
                   try {
                     await CartsStorage.saveCart(newCart);
                     setCartId(newCartId);
-                    setIsNewCart(false);
                     setShowSupermarketModal(false);
                   } catch (error) {
                     console.error('Erro ao criar carrinho:', error);
@@ -672,25 +570,10 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: '#FFFFFF',
   },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    flex: 1,
-  },
-  saveButton: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 8,
   },
   supermarketBanner: {
     backgroundColor: '#FFFFFF',
