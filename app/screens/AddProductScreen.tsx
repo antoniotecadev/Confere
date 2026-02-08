@@ -1,3 +1,4 @@
+import { FavoritesService } from '@/app/services/FavoritesService';
 import { PriceAlertService } from '@/app/services/PriceAlertService';
 import { PriceComparisonService } from '@/app/services/PriceComparisonService';
 import { CartItem } from '@/utils/carts-storage';
@@ -29,6 +30,11 @@ export default function AddProductScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [favoriteProducts, setFavoriteProducts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
 
   useEffect(() => {
     if (name.length >= 2) {
@@ -39,10 +45,20 @@ export default function AddProductScreen() {
     }
   }, [name]);
 
+  const loadFavorites = async () => {
+    const favorites = await FavoritesService.detectFrequentProducts(2);
+    const favoriteNames = new Set(favorites.map(f => f.name.toLowerCase()));
+    setFavoriteProducts(favoriteNames);
+  };
+
   const loadSuggestions = async () => {
     const productSuggestions = await PriceComparisonService.suggestProducts(name);
     setSuggestions(productSuggestions);
     setShowSuggestions(productSuggestions.length > 0);
+  };
+
+  const isFavorite = (productName: string): boolean => {
+    return favoriteProducts.has(productName.toLowerCase());
   };
 
   const handleSelectSuggestion = (suggestion: string) => {
@@ -260,7 +276,14 @@ export default function AddProductScreen() {
                     <Pressable
                       style={styles.suggestionItem}
                       onPress={() => handleSelectSuggestion(item)}>
-                      <Text style={styles.suggestionText}>📦 {item}</Text>
+                      <View style={styles.suggestionContent}>
+                        <Text style={styles.suggestionText}>📦 {item}</Text>
+                        {isFavorite(item) && (
+                          <View style={styles.favoriteBadge}>
+                            <Text style={styles.favoriteBadgeText}>⭐ Frequente</Text>
+                          </View>
+                        )}
+                      </View>
                     </Pressable>
                   )}
                   scrollEnabled={false}
@@ -462,9 +485,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  suggestionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   suggestionText: {
     fontSize: 15,
     color: '#333333',
+    flex: 1,
+  },
+  favoriteBadge: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  favoriteBadgeText: {
+    fontSize: 11,
+    color: '#F57C00',
+    fontWeight: '600',
   },
   quantityContainer: {
     flexDirection: 'row',
