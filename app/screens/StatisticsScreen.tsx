@@ -4,12 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-    Dimensions,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Dimensions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import LineChart from 'react-native-chart-kit/dist/line-chart';
 
@@ -169,7 +169,7 @@ export default function StatisticsScreen() {
         const cart = carts.find(c => c.id === comp.cartId);
         supermarketMap.set(comp.supermarket, {
           count: current.count + 1,
-          errors: current.errors + (!comp.matches ? 1 : 0),
+          errors: current.errors + (!comp.matches && comp.difference > 0 ? 1 : 0),
           spent: current.spent + (cart?.total || 0),
         });
       });
