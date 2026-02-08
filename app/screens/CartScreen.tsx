@@ -1,5 +1,5 @@
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
-import { supermarkets } from '@/utils/supermarkets';
+import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -357,6 +357,17 @@ export default function CartScreen() {
         </View>
       </View>
 
+      {/* Supermarket Banner */}
+      {supermarket && (
+        <View style={styles.supermarketBanner}>
+          <Image 
+            source={getSupermarketLogo(supermarket)} 
+            style={styles.bannerLogo}
+            resizeMode="contain"
+          />
+        </View>
+      )}
+
       {/* Products List */}
       <FlatList
         data={items}
@@ -680,6 +691,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 8,
+  },
+  supermarketBanner: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  bannerLogo: {
+    width: 120,
+    height: 80,
   },
   listContent: {
     padding: 16,
