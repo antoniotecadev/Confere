@@ -1,6 +1,7 @@
 import { BudgetService } from '@/app/services/BudgetService';
 import { Cart, CartsStorage } from '@/utils/carts-storage';
 import { ComparisonsStorage } from '@/utils/comparisons-storage';
+import { getFeatureInfo } from '@/utils/features-info';
 import { getSupermarketLogo } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -9,8 +10,10 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -22,6 +25,7 @@ export default function HomeScreen() {
   const [carts, setCarts] = useState<Cart[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,7 +213,9 @@ export default function HomeScreen() {
 
       {/* Floating Action Buttons */}
       <View style={[styles.fabContainer, { bottom: 310 }]}>
-        <Text style={styles.fabLabel}>Calculadora</Text>
+        <Pressable onPress={() => setSelectedFeature('calculator')}>
+          <Text style={styles.fabLabel}>Calculadora</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.fabSenary,
@@ -221,7 +227,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={[styles.fabContainer, { bottom: 240 }]}>
-        <Text style={styles.fabLabel}>Orçamento</Text>
+        <Pressable onPress={() => setSelectedFeature('budget')}>
+          <Text style={styles.fabLabel}>Orçamento</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.fabQuinary,
@@ -233,7 +241,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={[styles.fabContainer, { bottom: 170 }]}>
-        <Text style={styles.fabLabel}>Favoritos</Text>
+        <Pressable onPress={() => setSelectedFeature('favorites')}>
+          <Text style={styles.fabLabel}>Favoritos</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.fabQuaternary,
@@ -245,7 +255,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={[styles.fabContainer, { bottom: 100 }]}>
-        <Text style={styles.fabLabel}>Lista de Compras</Text>
+        <Pressable onPress={() => setSelectedFeature('shopping-list')}>
+          <Text style={styles.fabLabel}>Lista de Compras</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.fabTertiary,
@@ -257,7 +269,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={[styles.fabContainer, { bottom: 30 }]}>
-        <Text style={styles.fabLabel}>Comparação</Text>
+        <Pressable onPress={() => setSelectedFeature('comparison')}>
+          <Text style={styles.fabLabel}>Comparação</Text>
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.fabSecondary,
@@ -276,6 +290,90 @@ export default function HomeScreen() {
         onPress={handleCreateNewCart}>
         <Text style={styles.fabIcon}>+</Text>
       </Pressable>
+
+      {/* Modal de Informação de Features */}
+      <Modal
+        visible={selectedFeature !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedFeature(null)}>
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setSelectedFeature(null)}>
+          <Pressable 
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}>
+            {selectedFeature && (() => {
+              const featureInfo = getFeatureInfo(selectedFeature);
+              if (!featureInfo) return null;
+              
+              return (
+                <>
+                  <View style={styles.modalHeader}>
+                    <View style={styles.modalHeaderLeft}>
+                      <Ionicons 
+                        name={featureInfo.icon as any} 
+                        size={32} 
+                        color="#2196F3" 
+                      />
+                      <Text style={styles.modalTitle}>{featureInfo.title}</Text>
+                    </View>
+                    <Pressable 
+                      onPress={() => setSelectedFeature(null)}
+                      style={styles.modalCloseButton}>
+                      <Ionicons name="close" size={28} color="#666666" />
+                    </Pressable>
+                  </View>
+
+                  <ScrollView 
+                    style={styles.modalBody}
+                    showsVerticalScrollIndicator={false}>
+                    <Text style={styles.modalDescription}>
+                      {featureInfo.description}
+                    </Text>
+
+                    <View style={styles.modalSection}>
+                      <View style={styles.modalSectionHeader}>
+                        <Ionicons name="sparkles" size={20} color="#2196F3" />
+                        <Text style={styles.modalSectionTitle}>
+                          Benefícios
+                        </Text>
+                      </View>
+                      {featureInfo.benefits.map((benefit, index) => (
+                        <Text key={index} style={styles.modalListItem}>
+                          {benefit}
+                        </Text>
+                      ))}
+                    </View>
+
+                    <View style={styles.modalSection}>
+                      <View style={styles.modalSectionHeader}>
+                        <Ionicons name="book" size={20} color="#2196F3" />
+                        <Text style={styles.modalSectionTitle}>
+                          Como Usar
+                        </Text>
+                      </View>
+                      {featureInfo.howToUse.map((step, index) => (
+                        <Text key={index} style={styles.modalListItem}>
+                          {step}
+                        </Text>
+                      ))}
+                    </View>
+                  </ScrollView>
+
+                  <Pressable
+                    style={styles.modalActionButton}
+                    onPress={() => setSelectedFeature(null)}>
+                    <Text style={styles.modalActionButtonText}>
+                      Entendi
+                    </Text>
+                  </Pressable>
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -543,5 +641,98 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: '#FFFFFF',
     fontWeight: '300',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+    flex: 1,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalDescription: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#666666',
+    marginBottom: 24,
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  modalListItem: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#666666',
+    marginBottom: 8,
+    paddingLeft: 8,
+  },
+  modalActionButton: {
+    backgroundColor: '#2196F3',
+    margin: 20,
+    marginTop: 0,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
