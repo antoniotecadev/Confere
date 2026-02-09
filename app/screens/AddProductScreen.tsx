@@ -34,6 +34,38 @@ export default function AddProductScreen() {
   const [currentTotal, setCurrentTotal] = useState(0);
   const [dailyBudget, setDailyBudget] = useState<number | undefined>(undefined);
   const [supermarketName, setSupermarketName] = useState<string | undefined>(undefined);
+  const [isSumMode, setIsSumMode] = useState(false);
+
+  // Lista de produtos rápidos comuns em Angola
+  const quickProducts = [
+    { name: '🍚 Arroz', emoji: '🍚', color: '#FFF3E0' },
+    { name: '🛢️ Óleo', emoji: '🛢️', color: '#FFF9C4' },
+    { name: '🍬 Açúcar', emoji: '🍬', color: '#FCE4EC' },
+    { name: '🌾 Farinha de Trigo', emoji: '🌾', color: '#F3E5F5' },
+    { name: '🌽 Fuba', emoji: '🌽', color: '#FFF8E1' },
+    { name: '🫘 Feijão', emoji: '🫘', color: '#EFEBE9' },
+    { name: '🧂 Sal', emoji: '🧂', color: '#ECEFF1' },
+    { name: '🥛 Leite', emoji: '🥛', color: '#E3F2FD' },
+    { name: '🥚 Ovos', emoji: '🥚', color: '#FFF3E0' },
+    { name: '🍞 Pão', emoji: '🍞', color: '#FFEBEE' },
+    { name: '☕ Café', emoji: '☕', color: '#EFEBE9' },
+    { name: '🍅 Tomate', emoji: '🍅', color: '#FFEBEE' },
+    { name: '🧅 Cebola', emoji: '🧅', color: '#FFF3E0' },
+    { name: '🧄 Alho', emoji: '🧄', color: '#F3E5F5' },
+    { name: '🥔 Batata', emoji: '🥔', color: '#FFF8E1' },
+    { name: '🥤 Gasosa', emoji: '🥤', color: '#E8F5E9' },
+    { name: '💧 Água', emoji: '💧', color: '#E1F5FE' },
+    { name: '🍺 Cerveja', emoji: '🍺', color: '#FFF9C4' },
+    { name: '🧼 Sabão', emoji: '🧼', color: '#E0F2F1' },
+    { name: '🧴 Detergente', emoji: '🧴', color: '#E8EAF6' },
+  ];
+
+  // Valores pré-definidos comuns em Angola (Kz)
+  const prePrices = [
+    50, 100, 150, 200, 250, 300, 400, 500, 
+    600, 700, 800, 900, 1000, 1500, 2000, 2500, 
+    3000, 4000, 5000, 10000
+  ];
 
   useEffect(() => {
     loadFavorites();
@@ -82,6 +114,26 @@ export default function AddProductScreen() {
   const handleSelectSuggestion = (suggestion: string) => {
     setName(suggestion);
     setShowSuggestions(false);
+  };
+
+  const handleSelectQuickProduct = (productName: string) => {
+    // Remove o emoji e espaços extras
+    const cleanName = productName.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+    setName(cleanName);
+    setShowSuggestions(false);
+    // Foco automático no campo de preço seria ideal aqui
+  };
+
+  const handleSelectPrePrice = (value: number) => {
+    if (isSumMode) {
+      // Modo somatório: adiciona ao valor existente
+      const currentPrice = parseFloat(price) || 0;
+      const newPrice = currentPrice + value;
+      setPrice(newPrice.toString());
+    } else {
+      // Modo normal: substitui o valor
+      setPrice(value.toString());
+    }
   };
 
   const requestCameraPermission = async () => {
@@ -326,6 +378,27 @@ export default function AddProductScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         keyboardShouldPersistTaps="handled">
+        {/* Quick Products Section */}
+        <View style={styles.quickProductsSection}>
+          <Text style={styles.quickProductsTitle}>⚡ Produtos Rápidos</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickProductsScroll}>
+            {quickProducts.map((product, index) => (
+              <Pressable
+                key={index}
+                style={[styles.quickProductChip, { backgroundColor: product.color }]}
+                onPress={() => handleSelectQuickProduct(product.name)}>
+                <Text style={styles.quickProductEmoji}>{product.emoji}</Text>
+                <Text style={styles.quickProductText}>
+                  {product.name.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim()}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* Image Section */}
         <View style={styles.imageSection}>
           {imageUri ? (
@@ -391,6 +464,44 @@ export default function AddProductScreen() {
               onChangeText={setPrice}
               keyboardType="decimal-pad"
             />
+          </View>
+
+          {/* Pre-Prices Section */}
+          <View style={styles.prePricesSection}>
+            <View style={styles.prePricesHeader}>
+              <Text style={styles.prePricesTitle}>💰 Preços Rápidos</Text>
+              <Pressable 
+                style={styles.sumModeToggle}
+                onPress={() => setIsSumMode(!isSumMode)}>
+                <View style={[styles.checkbox, isSumMode && styles.checkboxActive]}>
+                  {isSumMode && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.sumModeText}>Modo Somatório</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.prePricesScroll}>
+              {prePrices.map((value, index) => (
+                <Pressable
+                  key={index}
+                  style={styles.prePriceChip}
+                  onPress={() => handleSelectPrePrice(value)}>
+                  <Text style={styles.prePriceValue}>
+                    {value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : value}
+                  </Text>
+                  <Text style={styles.prePriceCurrency}>Kz</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            {isSumMode && (
+              <View style={styles.sumModeHint}>
+                <Text style={styles.sumModeHintText}>
+                  ✨ Toque em vários valores para somar automaticamente
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Quantity */}
@@ -487,8 +598,133 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
   },
+  quickProductsSection: {
+    marginBottom: 20,
+  },
+  quickProductsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 12,
+  },
+  quickProductsScroll: {
+    gap: 10,
+    paddingRight: 20,
+  },
+  quickProductChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  quickProductEmoji: {
+    fontSize: 20,
+  },
+  quickProductText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#424242',
+  },
   imageSection: {
     marginBottom: 24,
+  },
+  prePricesSection: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  prePricesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  prePricesTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333333',
+  },
+  sumModeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#BDBDBD',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  sumModeText: {
+    fontSize: 13,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  prePricesScroll: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  prePriceChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  prePriceValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  prePriceCurrency: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  sumModeHint: {
+    backgroundColor: '#E8F5E9',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  sumModeHintText: {
+    fontSize: 12,
+    color: '#2E7D32',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   addImageButton: {
     backgroundColor: '#FFFFFF',
