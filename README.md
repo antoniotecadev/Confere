@@ -11,6 +11,12 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 <!-- [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) -->
 
+---
+
+🌐 **[Visita a Landing Page Oficial](https://confere-landing-page.vercel.app/)** | 📱 **[Baixa na Play Store](#)** (em breve)
+
+---
+
 </div>
 
 ---
