@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '100%',
     maxWidth: 500,
-    maxHeight: '80%',
+    maxHeight: '100%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
   },
   modalListItem: {
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 14,
     color: '#666666',
     marginBottom: 8,
     paddingLeft: 8,
