@@ -1,6 +1,6 @@
-import { FavoritesService } from '@/app/services/FavoritesService';
-import { PriceAlertService } from '@/app/services/PriceAlertService';
-import { PriceComparisonService } from '@/app/services/PriceComparisonService';
+import { FavoritesService } from '@/services/FavoritesService';
+import { PriceAlertService } from '@/services/PriceAlertService';
+import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';

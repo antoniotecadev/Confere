@@ -1,5 +1,5 @@
-import { FavoriteProduct, FavoritesService } from '@/app/services/FavoritesService';
-import { ShoppingListService } from '@/app/services/ShoppingListService';
+import { FavoriteProduct, FavoritesService } from '@/services/FavoritesService';
+import { ShoppingListService } from '@/services/ShoppingListService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';

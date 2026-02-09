@@ -1,4 +1,4 @@
-import * as StorageService from '@/app/services/storage';
+import * as StorageService from '@/services/storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 // ==================== TYPES ====================

@@ -1,5 +1,5 @@
-import { PremiumService } from '@/app/services/PremiumService';
-import { UserService } from '@/app/services/UserService';
+import { PremiumService } from '@/services/PremiumService';
+import { UserService } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';

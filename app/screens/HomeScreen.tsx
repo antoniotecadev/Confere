@@ -1,4 +1,4 @@
-import { BudgetService } from '@/app/services/BudgetService';
+import { BudgetService } from '@/services/BudgetService';
 import { Cart, CartsStorage } from '@/utils/carts-storage';
 import { ComparisonsStorage } from '@/utils/comparisons-storage';
 import { getFeatureInfo } from '@/utils/features-info';

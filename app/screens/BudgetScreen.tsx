@@ -1,4 +1,4 @@
-import { BudgetService, BudgetStats } from '@/app/services/BudgetService';
+import { BudgetService, BudgetStats } from '@/services/BudgetService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';

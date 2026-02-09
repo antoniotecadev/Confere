@@ -1,4 +1,4 @@
-import { PriceComparisonService, ProductPrice } from '@/app/services/PriceComparisonService';
+import { PriceComparisonService, ProductPrice } from '@/services/PriceComparisonService';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';

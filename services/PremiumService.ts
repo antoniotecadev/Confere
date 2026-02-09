@@ -1,4 +1,4 @@
-import { database } from '@/app/config/firebaseConfig';
+import { database } from '@/config/firebaseConfig';
 import { get, push, ref, serverTimestamp, set } from 'firebase/database';
 import { UserService } from './UserService';
 

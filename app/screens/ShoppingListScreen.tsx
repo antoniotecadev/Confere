@@ -1,4 +1,4 @@
-import { ShoppingListItem, ShoppingListService } from '@/app/services/ShoppingListService';
+import { ShoppingListItem, ShoppingListService } from '@/services/ShoppingListService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
