@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: '#9C27B0',
+    backgroundColor: '#2196F3',
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
