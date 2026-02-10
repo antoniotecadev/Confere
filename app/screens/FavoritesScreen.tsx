@@ -20,6 +20,7 @@ export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<FavoriteProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null);
+  const [showOnlyStarred, setShowOnlyStarred] = useState(false);
 
   useEffect(() => {
     loadFavorites();
@@ -90,7 +91,15 @@ export default function FavoritesScreen() {
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Favoritos</Text>
-      <View style={{ width: 40 }} />
+      <TouchableOpacity 
+        onPress={() => setShowOnlyStarred(!showOnlyStarred)}
+        style={styles.filterButton}>
+        <Ionicons 
+          name={showOnlyStarred ? "star" : "star-outline"} 
+          size={24} 
+          color="#FFFFFF" 
+        />
+      </TouchableOpacity>
     </View>
   );
 
@@ -222,20 +231,51 @@ export default function FavoritesScreen() {
     );
   }
 
+  // Filtrar produtos se necessário
+  const displayedFavorites = showOnlyStarred 
+    ? favorites.filter(p => p.isMarkedFavorite)
+    : favorites;
+
+  if (displayedFavorites.length === 0 && showOnlyStarred) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        <View style={styles.emptyContainer}>
+          <Ionicons name="star-outline" size={80} color="#BDBDBD" />
+          <Text style={styles.emptyTitle}>Nenhum Favorito Marcado</Text>
+          <Text style={styles.emptyText}>
+            Toca na estrela nos produtos para marcá-los como favoritos.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {renderHeader()}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header Info */}
-        <View style={styles.infoCard}>
-          <Ionicons name="bulb" size={20} color="#1976D2" style={{ marginRight: 8 }} />
-          <Text style={styles.infoText}>
-            Produtos detectados automaticamente com base nos seus últimos 10 carrinhos
-          </Text>
-        </View>
+        {!showOnlyStarred && (
+          <View style={styles.infoCard}>
+            <Ionicons name="bulb" size={20} color="#1976D2" style={{ marginRight: 8 }} />
+            <Text style={styles.infoText}>
+              Produtos detectados automaticamente com base nos seus últimos 10 carrinhos
+            </Text>
+          </View>
+        )}
+
+        {showOnlyStarred && (
+          <View style={styles.infoCard}>
+            <Ionicons name="star" size={20} color="#F57C00" style={{ marginRight: 8 }} />
+            <Text style={styles.infoText}>
+              Exibindo apenas produtos marcados como favoritos
+            </Text>
+          </View>
+        )}
 
         {/* Lista de Favoritos */}
-        {favorites.map((product, index) => (
+        {displayedFavorites.map((product, index) => (
           <View key={index} style={styles.productCard}>
             {/* Header do Card */}
             <View style={styles.productHeader}>
@@ -345,6 +385,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
