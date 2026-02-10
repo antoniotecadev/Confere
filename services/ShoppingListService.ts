@@ -81,7 +81,7 @@ class ShoppingListServiceClass {
       createdAt: new Date().toISOString(),
     };
 
-    items.push(newItem);
+    items.unshift(newItem); // Adiciona no topo (pilha)
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     return newItem;
   }
