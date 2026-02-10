@@ -114,6 +114,24 @@ export const featuresInfo: FeatureInfo[] = [
       '5. Decide com confiança',
     ],
   },
+  {
+    id: 'contact',
+    title: 'Suporte ao Cliente',
+    icon: 'headset',
+    description: 'Precisas de ajuda? Contacta o nosso suporte via WhatsApp ou envia uma mensagem diretamente pelo app. Estamos aqui para ajudar!',
+    benefits: [
+      '✓ Contacta suporte via WhatsApp',
+      '✓ Envia mensagem de contacto pelo app',
+      '✓ Resposta rápida da nossa equipa',
+      '✓ Suporte para dúvidas e feedback',
+    ],
+    howToUse: [
+      '1. Para suporte rápido, toca no ícone de chat',
+      '2. Preenche o formulário de contacto',
+      '3. Aguarda resposta da nossa equipa',
+      '4. Recebe ajuda personalizada',
+    ],
+  }
 ];
 
 /**
