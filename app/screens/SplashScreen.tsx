@@ -119,8 +119,8 @@ export default function SplashScreen() {
 
   const checkOnboardingStatus = async () => {
     try {
-      // Aguarda 3 segundos para animação
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Aguarda 5 segundos para animação
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       // Verifica se o usuário já viu o onboarding
       const hasSeenOnboarding = await AsyncStorage.getItem(ONBOARDING_KEY);
