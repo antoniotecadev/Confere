@@ -1,10 +1,11 @@
-import { ShoppingListItem, ShoppingListService } from '@/services/ShoppingListService';
+import { ProductByStore, ShoppingListItem, ShoppingListService } from '@/services/ShoppingListService';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -23,6 +24,9 @@ export default function ShoppingListScreen() {
   const [totalItems, setTotalItems] = useState(0);
   const [suggestions, setSuggestions] = useState<Array<{ name: string; count: number }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showStoreModal, setShowStoreModal] = useState(false);
+  const [storeOptions, setStoreOptions] = useState<ProductByStore[]>([]);
+  const [pendingProductName, setPendingProductName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -53,15 +57,53 @@ export default function ShoppingListScreen() {
       return;
     }
 
+    // Buscar produto em todos os supermercados
+    const stores = await ShoppingListService.getProductByStores(inputValue.trim());
+    
+    if (stores.length === 0) {
+      // Se não encontrou histórico, adicionar diretamente com preço esperado
+      const qty = parseInt(quantity) || 1;
+      const expPrice = expectedPrice.trim() ? parseFloat(expectedPrice) : null;
+      
+      await ShoppingListService.addItem(inputValue.trim(), qty, 'un', expPrice);
+      
+      setInputValue('');
+      setQuantity('1');
+      setExpectedPrice('');
+      setShowSuggestions(false);
+      loadData();
+    } else {
+      // Mostrar modal para escolher supermercado
+      setPendingProductName(inputValue.trim());
+      setStoreOptions(stores);
+      setShowStoreModal(true);
+    }
+  };
+
+  const handleSelectStore = async (store: ProductByStore) => {
     const qty = parseInt(quantity) || 1;
     const expPrice = expectedPrice.trim() ? parseFloat(expectedPrice) : null;
     
-    await ShoppingListService.addItem(inputValue.trim(), qty, 'un', expPrice);
+    // Adicionar com preço do supermercado selecionado
+    const item = await ShoppingListService.addItem(pendingProductName, qty, 'un', expPrice);
     
+    // Atualizar com preço e loja específicos
+    await ShoppingListService.updateItem(item.id, {
+      suggestedPrice: store.price,
+      lastStore: store.store,
+      lastPurchaseDate: store.lastPurchaseDate,
+      daysAgo: store.daysAgo,
+      isOldData: store.daysAgo > 30,
+    });
+    
+    // Limpar estados
     setInputValue('');
     setQuantity('1');
     setExpectedPrice('');
     setShowSuggestions(false);
+    setShowStoreModal(false);
+    setPendingProductName('');
+    setStoreOptions([]);
     loadData();
   };
 
@@ -371,6 +413,77 @@ export default function ShoppingListScreen() {
           }
         />
       )}
+
+      {/* Modal de Seleção de Supermercado */}
+      <Modal
+        visible={showStoreModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStoreModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Escolhe o Supermercado
+              </Text>
+              <Pressable onPress={() => setShowStoreModal(false)}>
+                <Ionicons name="close" size={28} color="#666666" />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Produto: <Text style={styles.modalProductName}>{pendingProductName}</Text>
+            </Text>
+
+            <FlatList
+              data={storeOptions}
+              keyExtractor={(item, index) => `${item.store}-${index}`}
+              renderItem={({ item, index }) => (
+                <Pressable
+                  style={[
+                    styles.storeOption,
+                    index === 0 && styles.storeOptionBest,
+                  ]}
+                  onPress={() => handleSelectStore(item)}>
+                  <View style={styles.storeOptionHeader}>
+                    <View style={styles.storeInfo}>
+                      <Ionicons name="storefront" size={20} color="#4CAF50" />
+                      <Text style={styles.storeName}>{item.store}</Text>
+                      {index === 0 && (
+                        <View style={styles.bestBadge}>
+                          <Text style={styles.bestBadgeText}>MAIS BARATO</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.storePrice}>
+                      {item.price.toLocaleString('pt-AO')} Kz
+                    </Text>
+                  </View>
+
+                  <View style={styles.storeDetails}>
+                    <Text style={styles.storeDetailText}>
+                      📅 Última compra: {' '}
+                      {item.daysAgo === 0 ? 'hoje' : 
+                       item.daysAgo === 1 ? 'ontem' : 
+                       `há ${item.daysAgo} dias`}
+                    </Text>
+                    <Text style={styles.storeDetailText}>
+                      🛒 Comprado {item.purchaseCount}x
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+              contentContainerStyle={styles.storeList}
+            />
+
+            <Pressable
+              style={styles.modalCancelButton}
+              onPress={() => setShowStoreModal(false)}>
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -715,5 +828,109 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  modalSubtitle: {
+    fontSize: 15,
+    color: '#666666',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  modalProductName: {
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  storeList: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  storeOption: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  storeOptionBest: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#E8F5E9',
+  },
+  storeOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  storeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+  storeName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  bestBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  bestBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  storePrice: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  storeDetails: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  storeDetailText: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  modalCancelButton: {
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666666',
   },
 });

@@ -28,6 +28,15 @@ export interface PriceSuggestion {
   purchaseCount: number;
 }
 
+export interface ProductByStore {
+  productName: string;
+  store: string;
+  price: number;
+  lastPurchaseDate: string;
+  daysAgo: number;
+  purchaseCount: number;
+}
+
 class ShoppingListServiceClass {
   /**
    * Obter todos os itens da lista
@@ -273,6 +282,64 @@ class ShoppingListServiceClass {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '')
       .trim();
+  }
+
+  /**
+   * Buscar produto em TODOS os supermercados
+   * Retorna lista com preço por supermercado
+   */
+  async getProductByStores(productName: string): Promise<ProductByStore[]> {
+    try {
+      const carts = await CartsStorage.getAllCarts();
+      const normalizedName = this.normalizeProductName(productName);
+      const storeMap = new Map<string, { prices: number[]; lastDate: string }>();
+
+      // Agrupar por supermercado
+      for (const cart of carts) {
+        for (const product of cart.items) {
+          if (this.normalizeProductName(product.name) === normalizedName) {
+            const store = cart.supermarket;
+            
+            if (!storeMap.has(store)) {
+              storeMap.set(store, { prices: [], lastDate: cart.date });
+            }
+            
+            const data = storeMap.get(store)!;
+            data.prices.push(product.price);
+            
+            // Manter a data mais recente
+            if (new Date(cart.date) > new Date(data.lastDate)) {
+              data.lastDate = cart.date;
+            }
+          }
+        }
+      }
+
+      // Converter para array de resultados
+      const results: ProductByStore[] = [];
+      
+      storeMap.forEach((data, store) => {
+        const averagePrice = data.prices.reduce((a, b) => a + b, 0) / data.prices.length;
+        const daysAgo = this.calculateDaysAgo(data.lastDate);
+        
+        results.push({
+          productName: productName.trim(),
+          store,
+          price: Math.round(averagePrice),
+          lastPurchaseDate: data.lastDate,
+          daysAgo,
+          purchaseCount: data.prices.length,
+        });
+      });
+
+      // Ordenar por preço (menor para maior)
+      results.sort((a, b) => a.price - b.price);
+
+      return results;
+    } catch (error) {
+      console.error('Erro ao buscar produto por supermercados:', error);
+      return [];
+    }
   }
 }
 
