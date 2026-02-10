@@ -5,12 +5,13 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Keyboard,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 
 export default function ShoppingListScreen() {
@@ -287,7 +288,7 @@ export default function ShoppingListScreen() {
   const checkedItems = items.filter((item) => item.checked);
 
   return (
-    <View style={styles.container}>
+    <Pressable onPress={() => Keyboard.dismiss()} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -484,7 +485,7 @@ export default function ShoppingListScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </Pressable>
   );
 }
 
