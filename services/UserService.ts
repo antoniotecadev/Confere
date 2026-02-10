@@ -42,8 +42,21 @@ class UserServiceClass {
       await AsyncStorage.setItem(USER_ID_KEY, storedId);
     }
 
-    this.userId = storedId;
-    return storedId;
+    // Sanitizar o ID para uso no Firebase (remover caracteres inválidos)
+    this.userId = this.sanitizeFirebasePath(storedId);
+    return this.userId;
+  }
+
+  /**
+   * Remove caracteres inválidos para paths do Firebase
+   * Firebase não aceita: . # $ [ ] e espaços
+   */
+  private sanitizeFirebasePath(path: string): string {
+    return path
+      .replace(/\s+/g, '_')      // Espaços → underscore
+      .replace(/\./g, '-')       // Pontos → hífen
+      .replace(/[#$\[\]()]/g, '') // Remove #, $, [], ()
+      .replace(/[^a-zA-Z0-9_-]/g, ''); // Remove qualquer outro caractere especial
   }
 
   /**
