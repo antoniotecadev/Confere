@@ -9,6 +9,7 @@ export interface ShoppingListItem {
   quantity: number;
   unit: string;
   checked: boolean;
+  expectedPrice: number | null;
   suggestedPrice: number | null;
   lastStore: string | null;
   lastPurchaseDate: string | null;
@@ -48,7 +49,8 @@ class ShoppingListServiceClass {
   async addItem(
     name: string,
     quantity: number = 1,
-    unit: string = 'un'
+    unit: string = 'un',
+    expectedPrice: number | null = null
   ): Promise<ShoppingListItem> {
     const items = await this.getItems();
 
@@ -61,6 +63,7 @@ class ShoppingListServiceClass {
       quantity,
       unit,
       checked: false,
+      expectedPrice,
       suggestedPrice: suggestion?.averagePrice || null,
       lastStore: suggestion?.store || null,
       lastPurchaseDate: suggestion?.date || null,

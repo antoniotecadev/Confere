@@ -3,13 +3,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 export default function ShoppingListScreen() {
@@ -17,6 +17,7 @@ export default function ShoppingListScreen() {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [quantity, setQuantity] = useState('1');
+  const [expectedPrice, setExpectedPrice] = useState('');
   const [estimatedTotal, setEstimatedTotal] = useState(0);
   const [itemsWithPrice, setItemsWithPrice] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -53,10 +54,13 @@ export default function ShoppingListScreen() {
     }
 
     const qty = parseInt(quantity) || 1;
-    await ShoppingListService.addItem(inputValue.trim(), qty, 'un');
+    const expPrice = expectedPrice.trim() ? parseFloat(expectedPrice) : null;
+    
+    await ShoppingListService.addItem(inputValue.trim(), qty, 'un', expPrice);
     
     setInputValue('');
     setQuantity('1');
+    setExpectedPrice('');
     setShowSuggestions(false);
     loadData();
   };
@@ -141,62 +145,101 @@ export default function ShoppingListScreen() {
     return `${price.toLocaleString('pt-AO')} Kz`;
   };
 
-  const renderItem = ({ item }: { item: ShoppingListItem }) => (
-    <View style={[styles.itemCard, item.checked && styles.itemCardChecked]}>
-      <Pressable
-        style={styles.checkboxContainer}
-        onPress={() => handleToggleItem(item.id)}>
-        <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
-          {item.checked && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
-        </View>
-      </Pressable>
+  const renderItem = ({ item }: { item: ShoppingListItem }) => {
+    // Verificar se preço histórico é maior que esperado
+    const isPriceAlert = 
+      item.expectedPrice && 
+      item.suggestedPrice && 
+      item.suggestedPrice > item.expectedPrice;
+    
+    const priceIncrease = isPriceAlert 
+      ? ((item.suggestedPrice! - item.expectedPrice!) / item.expectedPrice!) * 100 
+      : 0;
 
-      <View style={styles.itemContent}>
-        <Text style={[styles.itemName, item.checked && styles.itemNameChecked]}>
-          {item.name}
-          {item.quantity > 1 && (
-            <Text style={styles.itemQuantity}> ({item.quantity}x)</Text>
-          )}
-        </Text>
-
-        {item.suggestedPrice !== null && (
-          <View style={styles.priceContainer}>
-            <Ionicons name="pricetag-outline" size={14} color="#666666" />
-            <Text style={styles.suggestedPrice}>
-              ~{formatPrice(item.suggestedPrice * item.quantity)}
-            </Text>
-            {item.lastStore && (
-              <Text style={styles.lastStore}>
-                {' • '}{item.lastStore}
-                {item.daysAgo !== null && (
-                  <Text style={styles.daysAgo}>
-                    {' ('}
-                    {item.daysAgo === 0 ? 'hoje' : 
-                     item.daysAgo === 1 ? 'ontem' : 
-                     `há ${item.daysAgo} dias`}
-                    {')'}
-                  </Text>
-                )}
-              </Text>
-            )}
-            {item.isOldData && (
-              <Text style={styles.oldDataWarning}> ⚠️ Antigo</Text>
-            )}
+    return (
+      <View style={[
+        styles.itemCard, 
+        item.checked && styles.itemCardChecked,
+        isPriceAlert ? styles.itemCardAlert : null
+      ]}>
+        <Pressable
+          style={styles.checkboxContainer}
+          onPress={() => handleToggleItem(item.id)}>
+          <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
+            {item.checked && <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
           </View>
-        )}
+        </Pressable>
 
-        {item.suggestedPrice === null && (
-          <Text style={styles.noPrice}>Sem histórico de preço</Text>
-        )}
+        <View style={styles.itemContent}>
+          <Text style={[styles.itemName, item.checked && styles.itemNameChecked]}>
+            {item.name}
+            {item.quantity > 1 && (
+              <Text style={styles.itemQuantity}> ({item.quantity}x)</Text>
+            )}
+          </Text>
+
+          {/* Alerta de Preço Aumentou */}
+          {isPriceAlert && (
+            <View style={styles.priceAlertBox}>
+              <Ionicons name="warning" size={16} color="#FF5722" />
+              <Text style={styles.priceAlertText}>
+                Preço subiu {priceIncrease.toFixed(0)}%! Esperava {formatPrice(item.expectedPrice!)}, 
+                mas está ~{formatPrice(item.suggestedPrice!)}
+              </Text>
+            </View>
+          )}
+
+          {/* Preço Esperado vs Sugerido */}
+          {item.expectedPrice && !isPriceAlert && (
+            <View style={styles.priceExpectedBox}>
+              <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+              <Text style={styles.priceExpectedText}>
+                Preço OK! Esperava {formatPrice(item.expectedPrice)}
+                {item.suggestedPrice && `, está ~${formatPrice(item.suggestedPrice)}`}
+              </Text>
+            </View>
+          )}
+
+          {/* Preço Sugerido sem Esperado */}
+          {!item.expectedPrice && item.suggestedPrice && (
+            <View style={styles.priceContainer}>
+              <Ionicons name="pricetag-outline" size={14} color="#666666" />
+              <Text style={styles.suggestedPrice}>
+                ~{formatPrice(item.suggestedPrice * item.quantity)}
+              </Text>
+              {item.lastStore && (
+                <Text style={styles.lastStore}>
+                  {' • '}{item.lastStore}
+                  {item.daysAgo !== null && (
+                    <Text style={styles.daysAgo}>
+                      {' ('}
+                      {item.daysAgo === 0 ? 'hoje' : 
+                       item.daysAgo === 1 ? 'ontem' : 
+                       `há ${item.daysAgo} dias`}
+                      {')'}
+                    </Text>
+                  )}
+                </Text>
+              )}
+              {item.isOldData && (
+                <Text style={styles.oldDataWarning}> ⚠️ Antigo</Text>
+              )}
+            </View>
+          )}
+
+          {!item.expectedPrice && item.suggestedPrice === null && (
+            <Text style={styles.noPrice}>Sem histórico de preço</Text>
+          )}
+        </View>
+
+        <Pressable
+          style={styles.removeButton}
+          onPress={() => handleRemoveItem(item.id)}>
+          <Ionicons name="trash-outline" size={20} color="#F44336" />
+        </Pressable>
       </View>
-
-      <Pressable
-        style={styles.removeButton}
-        onPress={() => handleRemoveItem(item.id)}>
-        <Ionicons name="trash-outline" size={20} color="#F44336" />
-      </Pressable>
-    </View>
-  );
+    );
+  };
 
   const uncheckedItems = items.filter((item) => !item.checked);
   const checkedItems = items.filter((item) => item.checked);
@@ -264,6 +307,20 @@ export default function ShoppingListScreen() {
           <Pressable style={styles.addButton} onPress={handleAddItem}>
             <Ionicons name="add" size={28} color="#FFFFFF" />
           </Pressable>
+        </View>
+
+        {/* Campo de Preço Esperado */}
+        <View style={styles.priceRow}>
+          <Ionicons name="pricetag" size={18} color="#4CAF50" />
+          <TextInput
+            style={styles.priceInput}
+            placeholder="Preço esperado (opcional)"
+            placeholderTextColor="#999999"
+            keyboardType="decimal-pad"
+            value={expectedPrice}
+            onChangeText={setExpectedPrice}
+          />
+          <Text style={styles.priceSuffix}>Kz</Text>
         </View>
 
         {/* Sugestões de produtos frequentes */}
@@ -419,6 +476,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    height: 48,
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333333',
+    marginLeft: 8,
+  },
+  priceSuffix: {
+    fontSize: 15,
+    color: '#666666',
+    fontWeight: '600',
+  },
   input: {
     flex: 1,
     height: 48,
@@ -503,6 +580,10 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     backgroundColor: '#F9F9F9',
   },
+  itemCardAlert: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF5722',
+  },
   checkboxContainer: {
     marginRight: 12,
   },
@@ -538,6 +619,38 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  priceAlertBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginTop: 6,
+    gap: 6,
+  },
+  priceAlertText: {
+    fontSize: 12,
+    color: '#D32F2F',
+    fontWeight: '600',
+    flex: 1,
+  },
+  priceExpectedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginTop: 6,
+    gap: 6,
+  },
+  priceExpectedText: {
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '600',
+    flex: 1,
   },
   suggestedPrice: {
     fontSize: 14,
