@@ -194,6 +194,23 @@ export default function PremiumScreen() {
           )}
         </View>
 
+        {/* Contact Support Section */}
+        <Pressable
+          style={styles.contactCard}
+          onPress={() => router.push('/screens/ContactScreen')}>
+          <View style={styles.contactContent}>
+            <Ionicons name="chatbubbles" size={32} color="#2196F3" />
+            <View style={styles.contactTextContainer}>
+              <Text style={styles.contactTitle}>Precisa de Ajuda?</Text>
+              <Text style={styles.contactDescription}>
+                Mudou de telemóvel? Dúvidas sobre o Premium?
+              </Text>
+              <Text style={styles.contactCTA}>👉 Fala Connosco</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+          </View>
+        </Pressable>
+
         {/* Botão de Sincronização */}
         <Pressable
           style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]}
@@ -391,6 +408,23 @@ export default function PremiumScreen() {
           </View>
         </>
       )}
+
+      {/* Contact Support Section (Non-Premium) */}
+      <Pressable
+        style={styles.contactCard}
+        onPress={() => router.push('/screens/ContactScreen')}>
+        <View style={styles.contactContent}>
+          <Ionicons name="chatbubbles" size={32} color="#2196F3" />
+          <View style={styles.contactTextContainer}>
+            <Text style={styles.contactTitle}>Dúvidas sobre o Premium?</Text>
+            <Text style={styles.contactDescription}>
+              Estamos aqui para ajudar! Entre em contato connosco.
+            </Text>
+            <Text style={styles.contactCTA}>👉 Fala Connosco</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#2196F3" />
+        </View>
+      </Pressable>
 
       {/* {Platform.OS === 'ios' && (
         <View style={styles.iosMessage}>
@@ -763,5 +797,40 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  contactCard: {
+    backgroundColor: '#E3F2FD',
+    margin: 16,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    overflow: 'hidden',
+  },
+  contactContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  contactTextContainer: {
+    flex: 1,
+  },
+  contactTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1976D2',
+    marginBottom: 4,
+  },
+  contactDescription: {
+    fontSize: 14,
+    color: '#1976D2',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  contactCTA: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2196F3',
   },
 });
