@@ -1,6 +1,7 @@
 import { PremiumService } from '@/services/PremiumService';
 import { UserService } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -9,13 +10,11 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
 
 export default function PremiumScreen() {
@@ -26,6 +25,9 @@ export default function PremiumScreen() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | 'expired' | null>(null);
+  const [lastSync, setLastSync] = useState<number>(0);
 
   // Dados bancários (substitua com os seus)
   const BANK_INFO = {
@@ -41,12 +43,22 @@ export default function PremiumScreen() {
 
   const loadPremiumStatus = async () => {
     try {
-      const status = await PremiumService.getPremiumStatus();
+
+      // 1. Verificar conexão PRIMEIRO (rápido)
+      const networkState = await NetInfo.fetch();
+      const isOnline = networkState.isConnected && networkState.isInternetReachable;
+
       const id = await UserService.getUserId();
-      
-      setIsPremium(status.isPremium);
-      setExpiresAt(status.expiresAt);
+
+      const premiumStatus = await PremiumService.getPremiumStatus({ isOnline });
+      setIsPremium(premiumStatus.isPremium);
+      setExpiresAt(premiumStatus.expiresAt);
+      setStatus(premiumStatus.status);
+      setLastSync(premiumStatus.lastSync || 0);
       setUserId(id);
+      if (!isOnline) {
+        Alert.alert('Sem Conexão', 'Carregando status Premium do cache local. \nOs dados podem estar desatualizados. \nConecte-se à internet para verificar o status mais recente.');
+      }
     } catch (error) {
       console.error('Erro ao carregar status Premium:', error);
     } finally {
@@ -54,9 +66,27 @@ export default function PremiumScreen() {
     }
   };
 
+  const handleSyncStatus = async () => {
+    setIsSyncing(true);
+    try {
+      const premiumStatus = await PremiumService.syncStatus();
+
+      setIsPremium(premiumStatus.isPremium);
+      setExpiresAt(premiumStatus.expiresAt);
+      setStatus(premiumStatus.status);
+      setLastSync(premiumStatus.lastSync || Date.now());
+
+      Alert.alert('✅ Sincronizado', 'Estado Premium actualizado com sucesso!');
+    } catch (error) {
+      Alert.alert('⚠️ Erro', 'Não foi possível sincronizar. Verifica a tua conexão e tenta novamente.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handlePickReceipt = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert('Permissão Negada', 'Precisamos de acesso à galeria para anexar o comprovativo.');
       return;
@@ -83,7 +113,7 @@ export default function PremiumScreen() {
 
     try {
       const result = await PremiumService.submitPayment(receiptUri, 1500);
-      
+
       if (result.success) {
         Alert.alert(
           'Pagamento Enviado! ✅',
@@ -119,9 +149,23 @@ export default function PremiumScreen() {
     );
   }
 
+  // Formatador de tempo para última sincronização
+  const formatLastSync = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Agora mesmo';
+    if (minutes < 60) return `Há ${minutes} min`;
+    if (hours < 24) return `Há ${hours}h`;
+    return `Há ${days}d`;
+  };
+
   if (isPremium) {
     const expiryDate = expiresAt ? new Date(expiresAt).toLocaleDateString('pt-AO') : 'Ilimitado';
-    
+
     return (
       <ScrollView style={styles.container}>
         <View style={styles.header}>
@@ -142,7 +186,29 @@ export default function PremiumScreen() {
             <Text style={styles.infoLabel}>Expira em:</Text>
             <Text style={styles.infoValue}>{expiryDate}</Text>
           </View>
+          {lastSync > 0 && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Última Sincronização:</Text>
+              <Text style={styles.infoValue}>{formatLastSync(lastSync)}</Text>
+            </View>
+          )}
         </View>
+
+        {/* Botão de Sincronização */}
+        <Pressable
+          style={[styles.syncButton, isSyncing && styles.syncButtonDisabled]}
+          onPress={handleSyncStatus}
+          disabled={isSyncing}
+        >
+          {isSyncing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons name="sync-outline" size={20} color="#FFFFFF" />
+          )}
+          <Text style={styles.syncButtonText}>
+            {isSyncing ? 'A sincronizar...' : 'Sincronizar Estado'}
+          </Text>
+        </Pressable>
 
         <View style={styles.benefitsContainer}>
           <Text style={styles.sectionTitle}>Seus Benefícios:</Text>
@@ -198,7 +264,7 @@ export default function PremiumScreen() {
           { icon: 'stats-chart-outline', text: 'Estatísticas e gráficos detalhados' },
           { icon: 'cloud-upload-outline', text: 'Backup automático na nuvem' },
           { icon: 'calculator-outline', text: 'Calculadora de descontos avançada' },
-          { icon: 'ellipsis-horizontal-outline', text: 'E muito mais...'}
+          { icon: 'ellipsis-horizontal-outline', text: 'E muito mais...' }
           // { icon: 'download-outline', text: 'Exportação de dados (Excel/PDF)' },
           // { icon: 'headset-outline', text: 'Suporte prioritário 24/7' },
         ].map((benefit, index) => (
@@ -209,7 +275,7 @@ export default function PremiumScreen() {
         ))}
       </View>
 
-      {Platform.OS === 'android' && (
+      {(
         <>
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
@@ -225,7 +291,7 @@ export default function PremiumScreen() {
               <Ionicons name="phone-portrait-outline" size={24} color="#333333" style={styles.paymentIcon} />
               <Text style={styles.paymentTitle}>Instruções de Pagamento</Text>
             </View>
-            
+
             <View style={styles.step}>
               <View style={styles.stepNumberContainer}>
                 <Text style={styles.stepNumber}>1</Text>
@@ -244,18 +310,18 @@ export default function PremiumScreen() {
               <Pressable onPress={() => copyToClipboard(BANK_INFO.iban, 'IBAN')}>
                 <Text style={styles.bankLabel}>Banco:</Text>
                 <Text style={styles.bankValue}>{BANK_INFO.bank}</Text>
-                
+
                 <View style={styles.ibanRow}>
-                  <View style={{flex: 1}}>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.bankLabel}>IBAN:</Text>
                     <Text style={styles.bankValue}>{BANK_INFO.iban}</Text>
                   </View>
                   <Ionicons name="copy-outline" size={20} color="#2196F3" />
                 </View>
-                
+
                 <Text style={styles.bankLabel}>Titular:</Text>
                 <Text style={styles.bankValue}>{BANK_INFO.accountName}</Text>
-                
+
                 <Text style={styles.bankLabel}>Valor:</Text>
                 <Text style={[styles.bankValue, styles.amountHighlight]}>{BANK_INFO.amount}</Text>
               </Pressable>
@@ -268,8 +334,8 @@ export default function PremiumScreen() {
               <Text style={styles.stepText}>Use esta referência no pagamento:</Text>
             </View>
 
-            <Pressable 
-              style={styles.userIdCard} 
+            <Pressable
+              style={styles.userIdCard}
               onPress={() => copyToClipboard(userId, 'ID')}
             >
               <View style={styles.userIdHeader}>
@@ -300,8 +366,8 @@ export default function PremiumScreen() {
               </Pressable>
             )}
 
-            <Pressable 
-              style={[styles.submitButton, (!receiptUri || isSubmitting) && styles.submitButtonDisabled]} 
+            <Pressable
+              style={[styles.submitButton, (!receiptUri || isSubmitting) && styles.submitButtonDisabled]}
               onPress={handleSubmitPayment}
               disabled={!receiptUri || isSubmitting}
             >
@@ -326,7 +392,7 @@ export default function PremiumScreen() {
         </>
       )}
 
-      {Platform.OS === 'ios' && (
+      {/* {Platform.OS === 'ios' && (
         <View style={styles.iosMessage}>
           <Ionicons name="phone-portrait-outline" size={32} color="#1976D2" style={styles.iosIcon} />
           <Text style={styles.iosMessageText}>
@@ -336,7 +402,7 @@ export default function PremiumScreen() {
             </Text>
           </Text>
         </View>
-      )}
+      )} */}
 
       <Pressable style={styles.backButton} onPress={() => router.back()}>
         <Text style={styles.backButtonText}>Voltar</Text>
@@ -558,6 +624,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  syncButton: {
+    backgroundColor: '#2196F3',
+    margin: 16,
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  syncButtonDisabled: {
+    backgroundColor: '#B0BEC5',
+  },
+  syncButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   receiptPreview: {
     marginBottom: 16,

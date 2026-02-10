@@ -1,8 +1,11 @@
+import { PremiumBlockModal } from '@/components/PremiumBlockModal';
+import { usePremiumGuard } from '@/hooks/usePremiumGuard';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -22,6 +25,14 @@ export default function CartScreen() {
   const params = useLocalSearchParams();
   const [cartId, setCartId] = useState<string | undefined>(params.id as string | undefined);
 
+  // 🛡️ Premium Guard - Bloqueia acesso se não for Premium
+  const { hasAccess, loading: premiumLoading, status, showBlockModal, closeModal: closePremiumModal, expiresAt } = usePremiumGuard();
+  
+  const closeModal = () => {
+    closePremiumModal();
+    router.back(); // Volta para a tela anterior
+  };
+
   const [supermarket, setSupermarket] = useState('');
   const [items, setItems] = useState<CartItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -31,6 +42,20 @@ export default function CartScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
+
+  // 🛡️ Verificação de acesso Premium
+  if (premiumLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#E65100" />
+        <Text style={styles.loadingText}>A verificar acesso...</Text>
+      </View>
+    );
+  }
+
+  if (!hasAccess) {
+    return <PremiumBlockModal visible={showBlockModal} onClose={closeModal} status={status} expiresAt={expiresAt} />;
+  }
 
   // Sincronizar cartId quando params.id mudar (ao vir da Home)
   useEffect(() => {
@@ -842,6 +867,15 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontSize: 16,
     fontWeight: '600',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666666',
   },
   imageModalOverlay: {
     flex: 1,
