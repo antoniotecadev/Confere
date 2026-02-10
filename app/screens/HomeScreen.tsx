@@ -5,9 +5,10 @@ import { getFeatureInfo } from '@/utils/features-info';
 import { getSupermarketLogo } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   FlatList,
   Image,
   Modal,
@@ -26,6 +27,8 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
+  const [fabsVisible, setFabsVisible] = useState(true);
+  const fabsAnimation = useRef(new Animated.Value(1)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -116,6 +119,19 @@ export default function HomeScreen() {
 
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
+  };
+
+  const toggleFabs = () => {
+    const toValue = fabsVisible ? 0 : 1;
+    
+    Animated.spring(fabsAnimation, {
+      toValue,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 40,
+    }).start();
+    
+    setFabsVisible(!fabsVisible);
   };
 
   const renderCartItem = ({ item }: { item: Cart }) => (
@@ -212,7 +228,12 @@ export default function HomeScreen() {
       />
 
       {/* Floating Action Buttons */}
-      <View style={[styles.fabContainer, { bottom: 380 }]}>
+      <Animated.View 
+        style={[
+          styles.fabContainer, 
+          { bottom: 380 },
+          { opacity: fabsAnimation },
+        ]}>
         <Pressable onPress={() => setSelectedFeature('contact')}>
           <Text style={styles.fabLabel}>Fala Connosco</Text>
         </Pressable>
@@ -224,9 +245,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/screens/ContactScreen')}>
           <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={[styles.fabContainer, { bottom: 310 }]}>
+      <Animated.View 
+        style={[
+          styles.fabContainer, 
+          { bottom: 310 },
+          { opacity: fabsAnimation },
+        ]}>
         <Pressable onPress={() => setSelectedFeature('calculator')}>
           <Text style={styles.fabLabel}>Calculadora</Text>
         </Pressable>
@@ -238,9 +264,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/screens/DiscountCalculatorScreen')}>
           <Ionicons name="calculator" size={24} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={[styles.fabContainer, { bottom: 240 }]}>
+      <Animated.View 
+        style={[
+          styles.fabContainer, 
+          { bottom: 240 },
+          { opacity: fabsAnimation },
+        ]}>
         <Pressable onPress={() => setSelectedFeature('budget')}>
           <Text style={styles.fabLabel}>Orçamento</Text>
         </Pressable>
@@ -252,9 +283,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/screens/BudgetScreen')}>
           <Ionicons name="wallet" size={24} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={[styles.fabContainer, { bottom: 170 }]}>
+      <Animated.View 
+        style={[
+          styles.fabContainer, 
+          { bottom: 170 },
+          { opacity: fabsAnimation },
+        ]}>
         <Pressable onPress={() => setSelectedFeature('favorites')}>
           <Text style={styles.fabLabel}>Favoritos</Text>
         </Pressable>
@@ -266,9 +302,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/screens/FavoritesScreen')}>
           <Ionicons name="star" size={24} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={[styles.fabContainer, { bottom: 100 }]}>
+      <Animated.View 
+        style={[
+          styles.fabContainer, 
+          { bottom: 100 },
+          { opacity: fabsAnimation },
+        ]}>
         <Pressable onPress={() => setSelectedFeature('shopping-list')}>
           <Text style={styles.fabLabel}>Lista de Compras</Text>
         </Pressable>
@@ -280,9 +321,14 @@ export default function HomeScreen() {
           onPress={() => router.push('/screens/ShoppingListScreen')}>
           <Ionicons name="list" size={24} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={[styles.fabContainer, { bottom: 30 }]}>
+      <Animated.View 
+        style={[
+          styles.fabContainer, 
+          { bottom: 30 },
+          { opacity: fabsAnimation },
+        ]}>
         <Pressable onPress={() => setSelectedFeature('comparison')}>
           <Text style={styles.fabLabel}>Comparação</Text>
         </Pressable>
@@ -294,7 +340,18 @@ export default function HomeScreen() {
           onPress={() => router.push('/screens/PriceComparisonScreen')}>
           <Ionicons name="pricetags" size={24} color="#FFFFFF" />
         </Pressable>
-      </View>
+      </Animated.View>
+
+      {/* Toggle FABs Button */}
+      <Pressable
+        style={styles.fabToggle}
+        onPress={toggleFabs}>
+        <Ionicons 
+          name={fabsVisible ? "eye-off-outline" : "eye-outline"} 
+          size={24} 
+          color="#FFFFFF" 
+        />
+      </Pressable>
 
       <Pressable
         style={({ pressed }) => [
@@ -554,7 +611,7 @@ const styles = StyleSheet.create({
   },
   fabContainer: {
     position: 'absolute',
-    right: 20,
+    right: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -562,8 +619,7 @@ const styles = StyleSheet.create({
   fabLabel: {
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     color: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    padding: 6,
     borderRadius: 6,
     fontSize: 12,
     fontWeight: '600',
@@ -653,6 +709,27 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: '#00BCD4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabToggle: {
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+    left: '50%',
+    marginLeft: -24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#757575',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
