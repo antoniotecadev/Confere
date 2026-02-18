@@ -49,6 +49,7 @@ export default function AddProductScreen() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [detectionSuccess, setDetectionSuccess] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
   const device = useCameraDevice('back');
   const { scanText } = useTextRecognition();
   const productBufferRef = useRef<ProductData[]>([]);
@@ -420,12 +421,15 @@ export default function AddProductScreen() {
     if (!data || !data.price) return;
 
     // Validação de preço razoável (50 Kz a 50.000 Kz)
-    // const priceValue = parseFloat(data.price.replace(',', '.'));
-    // if (isNaN(priceValue) || priceValue < 50 || priceValue > 50000) return;
+    const priceValue = parseFloat(data.price.replace(',', '.'));
+    if (isNaN(priceValue) || priceValue < 50 || priceValue > 200000) return;
+
+    // Mostra indicador de detecção em progresso
+    setIsDetecting(true);
 
     productBufferRef.current.push(data);
 
-    if (productBufferRef.current.length > 4) {
+    if (productBufferRef.current.length > 3) {
       productBufferRef.current.shift();
     }
 
@@ -468,6 +472,7 @@ export default function AddProductScreen() {
           if (stableName && stableName !== name) setName(stableName);
 
           // Mostra feedback visual
+          setIsDetecting(false);
           setDetectionSuccess(true);
           setTimeout(() => setDetectionSuccess(false), 2000);
 
@@ -482,6 +487,7 @@ export default function AddProductScreen() {
         // Só preço detectado
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setPrice(stablePrice);
+        setIsDetecting(false);
         setDetectionSuccess(true);
         setTimeout(() => setDetectionSuccess(false), 2000);
 
@@ -491,17 +497,19 @@ export default function AddProductScreen() {
           frameCountRef.current = 0;
         }, 1500);
       }
+    } else {
+      setIsDetecting(false);
     }
   });
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
 
-    // Throttling: processa apenas 1 frame a cada 15 (melhora performance)
-    frameCountRef.current++;
-    if (frameCountRef.current % 15 !== 0) {
-      return;
-    }
+    // Throttling otimizado: 1 frame a cada 20 (detecção mais rápida)
+    // frameCountRef.current++;
+    // if (frameCountRef.current % 20 !== 0) {
+    //   return;
+    // }
 
     runAsync(frame, () => {
       'worklet';
@@ -526,11 +534,13 @@ export default function AddProductScreen() {
       productBufferRef.current = [];
       frameCountRef.current = 0;
       setDetectionSuccess(false);
+      setIsDetecting(false);
     } else {
       // Abrindo câmera
       setIsCameraActive(true);
       productBufferRef.current = [];
       frameCountRef.current = 0;
+      setIsDetecting(false);
     }
   };
 
@@ -617,7 +627,12 @@ export default function AddProductScreen() {
             </View>
             <Text style={styles.instructionText}>Centralize o rótulo</Text>
 
-            {/* Badge de sucesso */}
+            {/* Badge de status */}
+            {isDetecting && !detectionSuccess && (
+              <View style={styles.detectingBadge}>
+                <Text style={styles.detectingBadgeText}>👁️ Detectando...</Text>
+              </View>
+            )}
             {detectionSuccess && (
               <View style={styles.successBadge}>
                 <Text style={styles.successBadgeText}>✓ Detectado!</Text>
@@ -1246,6 +1261,24 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  detectingBadge: {
+    position: 'absolute',
+    top: 20,
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  detectingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   successBadge: {
     position: 'absolute',
