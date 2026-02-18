@@ -12,8 +12,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import TestCamera from './TestCamera';
 
 export default function SettingsScreen() {
+  return <TestCamera />
+}
+
+export function SettingsScreenB() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState({
