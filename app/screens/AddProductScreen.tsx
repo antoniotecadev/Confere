@@ -54,6 +54,7 @@ export default function AddProductScreen() {
   const { scanText } = useTextRecognition();
   const productBufferRef = useRef<ProductData[]>([]);
   const frameCountRef = useRef<number>(0);
+  const timeoutsRef = useRef<number[]>([]);
 
   // Lista de produtos rápidos comuns em Angola
   const quickProducts = [
@@ -385,8 +386,11 @@ export default function AddProductScreen() {
         // Captura preços: "84.900 AKZ", "84.900,00 Kz", "1.500 Kz", "500,50 Kz"
         const priceMatch = block.text.match(/(\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?)\s*(?:akz|kz)/i);
         if (priceMatch) {
-          const cleanPrice = priceMatch[1].replace(/\s+/g, '');
-          priceBlock = { ...block, price: cleanPrice };
+          // Normaliza: 84.900,50 → 84900.50 (remove pontos, vírgula vira ponto)
+          const normalizedPrice = priceMatch[1]
+            .replace(/\./g, '') // Remove separadores de milhares
+            .replace(',', '.'); // Vírgula decimal vira ponto
+          priceBlock = { ...block, price: normalizedPrice };
           break;
         }
       }
@@ -399,7 +403,11 @@ export default function AddProductScreen() {
         // Captura: "84.900", "84.900,00", "1500", "500,50"
         const priceMatch = block.text.match(/\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?/);
         if (priceMatch) {
-          priceBlock = { ...block, price: priceMatch[0] };
+          // Normaliza o preço
+          const normalizedPrice = priceMatch[0]
+            .replace(/\./g, '')
+            .replace(',', '.');
+          priceBlock = { ...block, price: normalizedPrice };
           break;
         }
       }
@@ -494,14 +502,16 @@ export default function AddProductScreen() {
           // Mostra feedback visual
           setIsDetecting(false);
           setDetectionSuccess(true);
-          setTimeout(() => setDetectionSuccess(false), 2000);
+          const t1 = setTimeout(() => setDetectionSuccess(false), 2000);
+          timeoutsRef.current.push(t1);
 
           // Auto-fecha câmera após 1.5s
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             setIsCameraActive(false);
             productBufferRef.current = [];
             frameCountRef.current = 0;
           }, 1500);
+          timeoutsRef.current.push(t2);
         }
       } else if (stablePrice !== price) {
         // Só preço detectado
@@ -509,13 +519,15 @@ export default function AddProductScreen() {
         setPrice(stablePrice);
         setIsDetecting(false);
         setDetectionSuccess(true);
-        setTimeout(() => setDetectionSuccess(false), 2000);
+        const t1 = setTimeout(() => setDetectionSuccess(false), 2000);
+        timeoutsRef.current.push(t1);
 
-        setTimeout(() => {
+        const t2 = setTimeout(() => {
           setIsCameraActive(false);
           productBufferRef.current = [];
           frameCountRef.current = 0;
         }, 1500);
+        timeoutsRef.current.push(t2);
       }
     } else {
       setIsDetecting(false);
@@ -525,9 +537,9 @@ export default function AddProductScreen() {
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
 
-    // Throttling otimizado: 1 frame a cada 20 (detecção mais rápida)
+    // Throttling: processa 1 frame a cada 8 (equilíbrio performance/velocidade)
     // frameCountRef.current++;
-    // if (frameCountRef.current % 20 !== 0) {
+    // if (frameCountRef.current % 8 !== 0) {
     //   return;
     // }
 
@@ -549,7 +561,10 @@ export default function AddProductScreen() {
     }
 
     if (isCameraActive) {
-      // Fechando câmera
+      // Fechando câmera - limpa timeouts pendentes
+      timeoutsRef.current.forEach(t => clearTimeout(t));
+      timeoutsRef.current = [];
+      
       setIsCameraActive(false);
       productBufferRef.current = [];
       frameCountRef.current = 0;
