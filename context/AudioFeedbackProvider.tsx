@@ -62,7 +62,7 @@ export function AudioFeedbackProvider({ children }: AudioFeedbackProviderProps) 
             player.play();
 
             // Vibrar o dispositivo
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Haptics.notificationAsync(type === 'positive' ? Haptics.NotificationFeedbackType.Success : (type == 'negative' ? Haptics.NotificationFeedbackType.Error : Haptics.NotificationFeedbackType.Warning));
         } catch (error) {
             console.warn('Erro ao tocar som de feedback:', error);
         }
