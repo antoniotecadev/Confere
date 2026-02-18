@@ -1,8 +1,8 @@
+import { useAudioFeedback } from '@/context/AudioFeedbackProvider';
 import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
 import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
-import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -31,6 +31,8 @@ interface ProductData {
 export default function AddProductScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { playBeepSound } = useAudioFeedback();
+
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -492,9 +494,7 @@ export default function AddProductScreen() {
 
         // Detecção bem-sucedida!
         if (stablePrice !== price || (stableName && stableName !== name)) {
-          // Vibração de sucesso
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
+          playBeepSound();
           // Atualiza campos
           if (stablePrice !== price) setPrice(stablePrice);
           if (stableName && stableName !== name) setName(stableName);
@@ -514,8 +514,7 @@ export default function AddProductScreen() {
           timeoutsRef.current.push(t2);
         }
       } else if (stablePrice !== price) {
-        // Só preço detectado
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        playBeepSound();
         setPrice(stablePrice);
         setIsDetecting(false);
         setDetectionSuccess(true);
