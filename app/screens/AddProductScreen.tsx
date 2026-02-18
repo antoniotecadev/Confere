@@ -347,7 +347,7 @@ export default function AddProductScreen() {
     saveProduct();
   };
 
-  // Função robusta de análise OCR com blocos espaciais
+  // Função robusta de análise OCR com blocos espaciais (otimizada para Angola)
   const analyzeProductLabel = (data: TextBlock, frame: Frame): ProductData | null => {
     'worklet';
     const { width, height } = frame;
@@ -375,13 +375,33 @@ export default function AddProductScreen() {
 
     if (focusedBlocks.length === 0) return null;
 
+    // PRIORIDADE 1: Blocos que contêm "Kz" ou "AKZ" (mais confiável)
     let priceBlock = null;
     for (let i = 0; i < focusedBlocks.length; i++) {
       const block = focusedBlocks[i];
-      const priceMatch = block.text.match(/\d{1,4}[.,]?\d{0,3}[,]\d{2}/);
-      if (priceMatch) {
-        priceBlock = { ...block, price: priceMatch[0] };
-        break;
+      const textUpper = block.text.toUpperCase();
+      
+      if (textUpper.includes('KZ') || textUpper.includes('AKZ')) {
+        // Captura preços: "84.900 AKZ", "84.900,00 Kz", "1.500 Kz", "500,50 Kz"
+        const priceMatch = block.text.match(/(\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?)\s*(?:akz|kz)/i);
+        if (priceMatch) {
+          const cleanPrice = priceMatch[1].replace(/\s+/g, '');
+          priceBlock = { ...block, price: cleanPrice };
+          break;
+        }
+      }
+    }
+
+    // PRIORIDADE 2: Formato padrão sem "Kz" explícito
+    if (!priceBlock) {
+      for (let i = 0; i < focusedBlocks.length; i++) {
+        const block = focusedBlocks[i];
+        // Captura: "84.900", "84.900,00", "1500", "500,50"
+        const priceMatch = block.text.match(/\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?/);
+        if (priceMatch) {
+          priceBlock = { ...block, price: priceMatch[0] };
+          break;
+        }
       }
     }
 
