@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-export function SettingsScreen() {
+export default function SettingsScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState({
