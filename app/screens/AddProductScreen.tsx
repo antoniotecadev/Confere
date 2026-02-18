@@ -4,7 +4,7 @@ import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -18,6 +18,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Camera, Frame, runAsync, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
+import { Text as TextBlock, useTextRecognition } from 'react-native-vision-camera-ocr-plus';
+import { Worklets } from 'react-native-worklets-core';
+
+interface ProductData {
+  price: string;
+  name: string;
+}
 
 export default function AddProductScreen() {
   const router = useRouter();
@@ -35,6 +43,13 @@ export default function AddProductScreen() {
   const [dailyBudget, setDailyBudget] = useState<number | undefined>(undefined);
   const [supermarketName, setSupermarketName] = useState<string | undefined>(undefined);
   const [isSumMode, setIsSumMode] = useState(false);
+
+  // Estados para OCR
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
+  const device = useCameraDevice('back');
+  const { scanText } = useTextRecognition();
+  const productBufferRef = useRef<ProductData[]>([]);
 
   // Lista de produtos rápidos comuns em Angola
   const quickProducts = [
@@ -62,15 +77,22 @@ export default function AddProductScreen() {
 
   // Valores pré-definidos comuns em Angola (Kz)
   const prePrices = [
-    50, 100, 150, 200, 250, 300, 400, 500, 
-    600, 700, 800, 900, 1000, 1500, 2000, 2500, 
+    50, 100, 150, 200, 250, 300, 400, 500,
+    600, 700, 800, 900, 1000, 1500, 2000, 2500,
     3000, 4000, 5000, 10000
   ];
 
   useEffect(() => {
     loadFavorites();
     loadCartData();
+    requestCameraPermissionOCR();
   }, []);
+
+  const requestCameraPermissionOCR = async () => {
+    Camera.requestCameraPermission().then(permission => {
+      setHasCameraPermission(permission === 'granted');
+    });
+  };
 
   const loadCartData = async () => {
     const cartId = params.id as string;
@@ -245,7 +267,7 @@ export default function AddProductScreen() {
     // Verificar orçamento diário primeiro
     if (dailyBudget && dailyBudget > 0) {
       const newTotal = currentTotal + productTotal;
-      
+
       if (newTotal > dailyBudget) {
         const exceeded = newTotal - dailyBudget;
         Alert.alert(
@@ -321,9 +343,150 @@ export default function AddProductScreen() {
     saveProduct();
   };
 
+  // Função robusta de análise OCR com blocos espaciais
+  const analyzeProductLabel = (data: TextBlock, frame: Frame): ProductData | null => {
+    'worklet';
+    const { width, height } = frame;
+
+    const focusSize = 350;
+    const focusX = (width - focusSize) / 2;
+    const focusY = (height - focusSize) / 2;
+
+    const focusedBlocks = [];
+    for (let i = 0; i < data.blocks.length; i++) {
+      const block = data.blocks[i];
+      const { x, y, width: bWidth, height: bHeight } = block.blockFrame;
+      const centerX = x + bWidth / 2;
+      const centerY = y + bHeight / 2;
+
+      if (centerX >= focusX && centerX <= focusX + focusSize &&
+        centerY >= focusY && centerY <= focusY + focusSize) {
+        focusedBlocks.push({
+          text: block.blockText.trim(),
+          x, y, width: bWidth, height: bHeight,
+          centerX, centerY
+        });
+      }
+    }
+
+    if (focusedBlocks.length === 0) return null;
+
+    let priceBlock = null;
+    for (let i = 0; i < focusedBlocks.length; i++) {
+      const block = focusedBlocks[i];
+      const priceMatch = block.text.match(/\d{1,4}[.,]?\d{0,3}[,]\d{2}/);
+      if (priceMatch) {
+        priceBlock = { ...block, price: priceMatch[0] };
+        break;
+      }
+    }
+
+    if (!priceBlock) return null;
+
+    let bestNameBlock = null;
+    let minDistance = 99999;
+
+    for (let i = 0; i < focusedBlocks.length; i++) {
+      const block = focusedBlocks[i];
+
+      if (/^\d+[.,\s]*\d*$/.test(block.text) || block.text.length < 3) continue;
+      if (block.text === priceBlock.text) continue;
+
+      const verticalDist = priceBlock.centerY - block.centerY;
+      const horizontalDist = Math.abs(priceBlock.centerX - block.centerX);
+
+      if (verticalDist > 0 && verticalDist < 200 && horizontalDist < 150) {
+        const distance = verticalDist + horizontalDist * 0.5;
+        const sizeBonus = block.height > 30 ? -50 : 0;
+        const totalScore = distance + sizeBonus;
+
+        if (totalScore < minDistance) {
+          minDistance = totalScore;
+          bestNameBlock = block;
+        }
+      }
+    }
+
+    return {
+      price: priceBlock.price,
+      name: bestNameBlock ? bestNameBlock.text.toUpperCase() : ''
+    };
+  };
+
+  const updateProductDataJS = Worklets.createRunOnJS((data: ProductData | null) => {
+    if (!data || !data.price) return;
+
+    productBufferRef.current.push(data);
+
+    if (productBufferRef.current.length > 4) {
+      productBufferRef.current.shift();
+    }
+
+    if (productBufferRef.current.length < 2) return;
+
+    const priceFreq: Record<string, number> = {};
+    productBufferRef.current.forEach(p => {
+      priceFreq[p.price] = (priceFreq[p.price] || 0) + 1;
+    });
+
+    const stablePrice = Object.keys(priceFreq).find(p => priceFreq[p] >= 2);
+
+    if (stablePrice) {
+      const namesForPrice = productBufferRef.current
+        .filter(p => p.price === stablePrice && p.name.length >= 3)
+        .map(p => p.name);
+
+      if (namesForPrice.length > 0) {
+        const nameFreq: Record<string, number> = {};
+        namesForPrice.forEach(n => {
+          nameFreq[n] = (nameFreq[n] || 0) + 1;
+        });
+
+        let stableName = '';
+        let maxCount = 0;
+        for (const nm in nameFreq) {
+          if (nameFreq[nm] > maxCount) {
+            maxCount = nameFreq[nm];
+            stableName = nm;
+          }
+        }
+
+        if (stablePrice !== price) setPrice(stablePrice);
+        if (stableName && stableName !== name) setName(stableName);
+      } else if (stablePrice !== price) {
+        setPrice(stablePrice);
+      }
+    }
+  });
+
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    runAsync(frame, () => {
+      'worklet';
+      const data = scanText(frame);
+
+      if (data && data.blocks && data.blocks.length > 0) {
+        const productData = analyzeProductLabel(data, frame);
+        updateProductDataJS(productData);
+      }
+    });
+  }, [scanText]);
+
+  const toggleCamera = () => {
+    if (!hasCameraPermission) {
+      Alert.alert('Permissão necessária', 'Precisamos de permissão para aceder à câmera OCR.');
+      return;
+    }
+    setIsCameraActive(!isCameraActive);
+    // Limpa o buffer ao fechar a câmera
+    if (isCameraActive) {
+      productBufferRef.current = [];
+    }
+  };
+
   const saveProduct = async () => {
     const cartId = params.id as string;
-    
+
     try {
       // Buscar o carrinho atual
       const cart = await CartsStorage.getCartById(cartId);
@@ -373,6 +536,39 @@ export default function AddProductScreen() {
         <Text style={styles.headerTitle}>Adicionar Produto</Text>
         <View style={{ width: 40 }} />
       </View>
+
+      {/* Botão Toggle Câmera OCR */}
+      <View style={styles.ocrButtonContainer}>
+        <Pressable
+          style={[styles.ocrToggleButton, isCameraActive && styles.ocrToggleButtonActive]}
+          onPress={toggleCamera}>
+          <Text style={styles.ocrToggleIcon}>{isCameraActive ? '✕' : '📷'}</Text>
+          <Text style={styles.ocrToggleText}>
+            {isCameraActive ? 'Fechar OCR' : 'Escanear Produto'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Câmera OCR (quando ativa) */}
+      {isCameraActive && device && (
+        <View style={styles.cameraContainer}>
+          <Camera
+            style={styles.camera}
+            device={device}
+            isActive={true}
+            frameProcessor={frameProcessor}
+          />
+          <View style={styles.focusOverlay}>
+            <View style={styles.focusBox}>
+              <View style={[styles.corner, styles.cornerTopLeft]} />
+              <View style={[styles.corner, styles.cornerTopRight]} />
+              <View style={[styles.corner, styles.cornerBottomLeft]} />
+              <View style={[styles.corner, styles.cornerBottomRight]} />
+            </View>
+            <Text style={styles.instructionText}>Centralize o rótulo</Text>
+          </View>
+        </View>
+      )}
 
       <ScrollView
         style={styles.content}
@@ -470,7 +666,7 @@ export default function AddProductScreen() {
           <View style={styles.prePricesSection}>
             <View style={styles.prePricesHeader}>
               <Text style={styles.prePricesTitle}>💰 Preços Rápidos</Text>
-              <Pressable 
+              <Pressable
                 style={styles.sumModeToggle}
                 onPress={() => setIsSumMode(!isSumMode)}>
                 <View style={[styles.checkbox, isSumMode && styles.checkboxActive]}>
@@ -895,5 +1091,103 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  ocrButtonContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#F5F5F5',
+  },
+  ocrToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF9800',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ocrToggleButtonActive: {
+    backgroundColor: '#F44336',
+  },
+  ocrToggleIcon: {
+    fontSize: 20,
+  },
+  ocrToggleText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cameraContainer: {
+    height: 280,
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+    borderWidth: 3,
+    borderColor: '#FF9800',
+  },
+  camera: {
+    flex: 1,
+  },
+  focusOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  focusBox: {
+    width: 200,
+    height: 200,
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderColor: '#00ff00',
+    borderWidth: 3,
+  },
+  cornerTopLeft: {
+    top: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+  },
+  cornerTopRight: {
+    top: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+  },
+  cornerBottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+  },
+  cornerBottomRight: {
+    bottom: 0,
+    right: 0,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+  },
+  instructionText: {
+    position: 'absolute',
+    bottom: 20,
+    color: '#00ff00',
+    fontSize: 12,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

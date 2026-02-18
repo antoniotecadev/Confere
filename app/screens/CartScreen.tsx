@@ -43,23 +43,30 @@ export default function CartScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
 
-  // 🛡️ Verificação de acesso Premium
-  if (premiumLoading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#E65100" />
-        <Text style={styles.loadingText}>A verificar acesso...</Text>
-      </View>
-    );
-  }
+  // Funções auxiliares (devem estar antes dos hooks que as usam)
+  const loadCart = async (id: string) => {
+    try {
+      const cart = await CartsStorage.getCartById(id);
+      if (cart) {
+        setSupermarket(cart.supermarket);
+        setItems(cart.items);
+        setTotal(cart.total);
+        setDailyBudget(cart.dailyBudget);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar carrinho:', error);
+      Alert.alert('Erro', 'Não foi possível carregar o carrinho.');
+    }
+  };
 
-  if (!hasAccess) {
-    return <PremiumBlockModal visible={showBlockModal} onClose={closeModal} status={status} expiresAt={expiresAt} />;
-  }
+  const calculateTotal = () => {
+    const newTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    setTotal(newTotal);
+  };
 
   // Sincronizar cartId quando params.id mudar (ao vir da Home)
   useEffect(() => {
-    if (params.id && params.id !== cartId) {
+    if (params?.id && params?.id !== cartId) {
       setCartId(params.id as string);
     }
   }, [params.id]);
@@ -83,33 +90,23 @@ export default function CartScreen() {
     }, [cartId])
   );
 
-
-
   useEffect(() => {
     calculateTotal();
   }, [items]);
 
-  const loadCart = async (id: string) => {
-    try {
-      const cart = await CartsStorage.getCartById(id);
-      if (cart) {
-        setSupermarket(cart.supermarket);
-        setItems(cart.items);
-        setTotal(cart.total);
-        setDailyBudget(cart.dailyBudget);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar carrinho:', error);
-      Alert.alert('Erro', 'Não foi possível carregar o carrinho.');
-    }
-  };
+  // 🛡️ Verificação de acesso Premium - RENDERIZAÇÃO CONDICIONAL
+  if (premiumLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#E65100" />
+        <Text style={styles.loadingText}>A verificar acesso...</Text>
+      </View>
+    );
+  }
 
-  const calculateTotal = () => {
-    const newTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    setTotal(newTotal);
-  };
-
-
+  if (hasAccess) {
+    return <PremiumBlockModal visible={showBlockModal} onClose={closeModal} status={status} expiresAt={expiresAt} />;
+  }
 
   const handleAddProduct = async () => {
     if (!cartId) {
