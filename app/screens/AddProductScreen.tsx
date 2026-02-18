@@ -2,6 +2,7 @@ import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
 import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -47,9 +48,11 @@ export default function AddProductScreen() {
   // Estados para OCR
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
+  const [detectionSuccess, setDetectionSuccess] = useState(false);
   const device = useCameraDevice('back');
   const { scanText } = useTextRecognition();
   const productBufferRef = useRef<ProductData[]>([]);
+  const frameCountRef = useRef<number>(0);
 
   // Lista de produtos rápidos comuns em Angola
   const quickProducts = [
@@ -416,6 +419,10 @@ export default function AddProductScreen() {
   const updateProductDataJS = Worklets.createRunOnJS((data: ProductData | null) => {
     if (!data || !data.price) return;
 
+    // Validação de preço razoável (50 Kz a 50.000 Kz)
+    // const priceValue = parseFloat(data.price.replace(',', '.'));
+    // if (isNaN(priceValue) || priceValue < 50 || priceValue > 50000) return;
+
     productBufferRef.current.push(data);
 
     if (productBufferRef.current.length > 4) {
@@ -451,16 +458,51 @@ export default function AddProductScreen() {
           }
         }
 
-        if (stablePrice !== price) setPrice(stablePrice);
-        if (stableName && stableName !== name) setName(stableName);
+        // Detecção bem-sucedida!
+        if (stablePrice !== price || (stableName && stableName !== name)) {
+          // Vibração de sucesso
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+          // Atualiza campos
+          if (stablePrice !== price) setPrice(stablePrice);
+          if (stableName && stableName !== name) setName(stableName);
+
+          // Mostra feedback visual
+          setDetectionSuccess(true);
+          setTimeout(() => setDetectionSuccess(false), 2000);
+
+          // Auto-fecha câmera após 1.5s
+          setTimeout(() => {
+            setIsCameraActive(false);
+            productBufferRef.current = [];
+            frameCountRef.current = 0;
+          }, 1500);
+        }
       } else if (stablePrice !== price) {
+        // Só preço detectado
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setPrice(stablePrice);
+        setDetectionSuccess(true);
+        setTimeout(() => setDetectionSuccess(false), 2000);
+
+        setTimeout(() => {
+          setIsCameraActive(false);
+          productBufferRef.current = [];
+          frameCountRef.current = 0;
+        }, 1500);
       }
     }
   });
 
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
+
+    // Throttling: processa apenas 1 frame a cada 15 (melhora performance)
+    frameCountRef.current++;
+    if (frameCountRef.current % 15 !== 0) {
+      return;
+    }
+
     runAsync(frame, () => {
       'worklet';
       const data = scanText(frame);
@@ -477,10 +519,18 @@ export default function AddProductScreen() {
       Alert.alert('Permissão necessária', 'Precisamos de permissão para aceder à câmera OCR.');
       return;
     }
-    setIsCameraActive(!isCameraActive);
-    // Limpa o buffer ao fechar a câmera
+
     if (isCameraActive) {
+      // Fechando câmera
+      setIsCameraActive(false);
       productBufferRef.current = [];
+      frameCountRef.current = 0;
+      setDetectionSuccess(false);
+    } else {
+      // Abrindo câmera
+      setIsCameraActive(true);
+      productBufferRef.current = [];
+      frameCountRef.current = 0;
     }
   };
 
@@ -529,13 +579,13 @@ export default function AddProductScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      {isCameraActive ? <View style={{ marginTop: 20 }} /> : <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Adicionar Produto</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </View>}
 
       {/* Botão Toggle Câmera OCR */}
       <View style={styles.ocrButtonContainer}>
@@ -555,7 +605,7 @@ export default function AddProductScreen() {
           <Camera
             style={styles.camera}
             device={device}
-            isActive={true}
+            isActive={isCameraActive}
             frameProcessor={frameProcessor}
           />
           <View style={styles.focusOverlay}>
@@ -566,6 +616,13 @@ export default function AddProductScreen() {
               <View style={[styles.corner, styles.cornerBottomRight]} />
             </View>
             <Text style={styles.instructionText}>Centralize o rótulo</Text>
+
+            {/* Badge de sucesso */}
+            {detectionSuccess && (
+              <View style={styles.successBadge}>
+                <Text style={styles.successBadgeText}>✓ Detectado!</Text>
+              </View>
+            )}
           </View>
         </View>
       )}
@@ -1189,5 +1246,23 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  successBadge: {
+    position: 'absolute',
+    top: 20,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  successBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
