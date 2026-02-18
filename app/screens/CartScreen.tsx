@@ -291,7 +291,7 @@ export default function CartScreen() {
 
       {/* Products List */}
       <FlatList
-        data={items}
+        data={[...items].reverse()}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={[
