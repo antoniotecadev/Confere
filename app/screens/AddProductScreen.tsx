@@ -17,8 +17,9 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 import { Camera, Frame, runAsync, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
 import { Text as TextBlock, useTextRecognition } from 'react-native-vision-camera-ocr-plus';
 import { Worklets } from 'react-native-worklets-core';
@@ -53,10 +54,18 @@ export default function AddProductScreen() {
   const [detectionSuccess, setDetectionSuccess] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const device = useCameraDevice('back');
+
+  const ocr = useTextRecognition();
+
+  // const format = useCameraFormat(device, [
+  //   { videoResolution: { width: 1280, height: 720 } }, // Resolução menor para o APK não engasgar
+  //   { fps: 5 } // Reduzir FPS para melhorar performance em dispositivos mais fracos
+  // ]);
+
   const { scanText } = useTextRecognition();
+  const frameCount = useSharedValue(0);
   const productBufferRef = useRef<ProductData[]>([]);
-  const frameCountRef = useRef<number>(0);
-  const timeoutsRef = useRef<number[]>([]);
+  // const frameCountRef = useRef<number>(0);
 
   // Lista de produtos rápidos comuns em Angola
   const quickProducts = [
@@ -383,7 +392,7 @@ export default function AddProductScreen() {
     for (let i = 0; i < focusedBlocks.length; i++) {
       const block = focusedBlocks[i];
       const textUpper = block.text.toUpperCase();
-      
+
       if (textUpper.includes('KZ') || textUpper.includes('AKZ')) {
         // Captura preços: "84.900 AKZ", "84.900,00 Kz", "1.500 Kz", "500,50 Kz"
         const priceMatch = block.text.match(/(\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?)\s*(?:akz|kz)/i);
@@ -502,16 +511,14 @@ export default function AddProductScreen() {
           // Mostra feedback visual
           setIsDetecting(false);
           setDetectionSuccess(true);
-          const t1 = setTimeout(() => setDetectionSuccess(false), 2000);
-          timeoutsRef.current.push(t1);
+          setTimeout(() => setDetectionSuccess(false), 2000);
 
           // Auto-fecha câmera após 1.5s
-          const t2 = setTimeout(() => {
+          setTimeout(() => {
             setIsCameraActive(false);
             productBufferRef.current = [];
-            frameCountRef.current = 0;
+            frameCount.value = 0;
           }, 1500);
-          timeoutsRef.current.push(t2);
         }
       } else if (stablePrice !== price) {
         playBeepSound();
@@ -519,39 +526,65 @@ export default function AddProductScreen() {
         setIsDetecting(false);
         setDetectionSuccess(true);
         const t1 = setTimeout(() => setDetectionSuccess(false), 2000);
-        timeoutsRef.current.push(t1);
 
-        const t2 = setTimeout(() => {
+        setTimeout(() => {
           setIsCameraActive(false);
           productBufferRef.current = [];
-          frameCountRef.current = 0;
+          frameCount.value = 0;
         }, 1500);
-        timeoutsRef.current.push(t2);
       }
     } else {
       setIsDetecting(false);
     }
   });
 
+  const processarTextoNoJS = Worklets.createRunOnJS((data: ProductData | null) => {
+    alert('Dados OCR processados no JS:\n\n' + JSON.stringify(data, null, 2));
+  });
+
+
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
 
+    // 1. Logica de Skip (Deve ser a primeira coisa)
+    frameCount.value++;
+    if (frameCount.value % 8 !== 0) {
+      return;
+    }
+
+    // 2. Só agora executamos o OCR (que é pesado)
+    const data = scanText(frame);
+
+    if (data && data.blocks.length > 0) {
+      // 3. Chamar a lógica de negócio no JS
+      runAsync(frame, () => {
+        'worklet';
+        const text = data.blocks.map(b => b.blockText).join(' ');
+        processarTextoNoJS({ price: text, name: ''});
+      });
+    }
+  }, [scanText]);
+
+  const frameProcessor_ = useFrameProcessor((frame) => {
+    'worklet';
+
     // Throttling: processa 1 frame a cada 8 (equilíbrio performance/velocidade)
-    // frameCountRef.current++;
-    // if (frameCountRef.current % 8 !== 0) {
-    //   return;
-    // }
+    frameCount.value++;
+    if (frameCount.value % 8 !== 0) {
+      return;
+    }
 
     runAsync(frame, () => {
       'worklet';
       const data = scanText(frame);
 
       if (data && data.blocks && data.blocks.length > 0) {
-        const productData = analyzeProductLabel(data, frame);
-        updateProductDataJS(productData);
+        // const productData = analyzeProductLabel(data, frame);
+        // updateProductDataJS(productData);
+        // updateProductDataJS({ price: "999", name: "TESTE APK" });
       }
     });
-  }, [scanText]);
+  }, [ocr]);
 
   const toggleCamera = () => {
     if (!hasCameraPermission) {
@@ -560,20 +593,16 @@ export default function AddProductScreen() {
     }
 
     if (isCameraActive) {
-      // Fechando câmera - limpa timeouts pendentes
-      timeoutsRef.current.forEach(t => clearTimeout(t));
-      timeoutsRef.current = [];
-      
       setIsCameraActive(false);
       productBufferRef.current = [];
-      frameCountRef.current = 0;
+      frameCount.value = 0;
       setDetectionSuccess(false);
       setIsDetecting(false);
     } else {
       // Abrindo câmera
       setIsCameraActive(true);
       productBufferRef.current = [];
-      frameCountRef.current = 0;
+      frameCount.value = 0;
       setIsDetecting(false);
     }
   };
@@ -649,6 +678,7 @@ export default function AddProductScreen() {
           <Camera
             style={styles.camera}
             device={device}
+            pixelFormat="yuv" // Essencial para OCR em alguns modelos Android
             isActive={isCameraActive}
             frameProcessor={frameProcessor}
           />

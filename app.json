@@ -54,7 +54,29 @@
           "cameraPermissionText": "Allow Confere to access your camera to scan product information and take photos.",
           "enableCodeScanner": false
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://www.jitpack.io"
+            ],
+            "minSdkVersion": 24,
+            "targetSdkVersion": 34,
+            "kotlinVersion": "2.0.0",
+            "proguardRules": "-keep class com.google.mlkit.** { *; }\n-keep class com.google.android.gms.tasks.** { *; }\n-keep class com.visioncameraocr.** { *; }\n-keep class com.mrousavy.camera.** { *; }\n-keep class com.swmansion.reanimated.** { *; }\n-keep class com.margelo.nitro.** { *; }",
+            "packagingOptions": {
+              "pickFirst": [
+                "**/libc++_shared.so",
+                "**/libfbjni.so",
+                "**/libhermes.so"
+              ]
+            }
+          }
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
