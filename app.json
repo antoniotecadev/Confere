@@ -52,7 +52,8 @@
         "react-native-vision-camera",
         {
           "cameraPermissionText": "Allow Confere to access your camera to scan product information and take photos.",
-          "enableCodeScanner": false
+          "enableCodeScanner": true,
+          "enableLocation": false
         }
       ],
       [
@@ -64,7 +65,10 @@
             ],
             "minSdkVersion": 24,
             "targetSdkVersion": 34,
-            "kotlinVersion": "2.0.0",
+            "kotlinVersion": "1.9.24",
+	    "gradleProps": {
+              "org.gradle.jvmargs": "-Xmx4096m -XX:MaxMetaspaceSize=512m"
+            },
             "proguardRules": "-keep class com.google.mlkit.** { *; }\n-keep class com.google.android.gms.tasks.** { *; }\n-keep class com.visioncameraocr.** { *; }\n-keep class com.mrousavy.camera.** { *; }\n-keep class com.swmansion.reanimated.** { *; }\n-keep class com.margelo.nitro.** { *; }",
             "packagingOptions": {
               "pickFirst": [
@@ -80,7 +84,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},
