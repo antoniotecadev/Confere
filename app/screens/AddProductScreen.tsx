@@ -3,11 +3,13 @@ import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
 import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -191,7 +193,7 @@ export default function AddProductScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
@@ -540,9 +542,13 @@ export default function AddProductScreen() {
           <Pressable
             style={[styles.ocrToggleButton, isCameraActive && styles.ocrToggleButtonActive]}
             onPress={toggleCamera}>
-            <Text style={styles.ocrToggleIcon}>{isCameraActive ? '✕' : '📷'}</Text>
+            <MaterialIcons
+              name={isCameraActive ? 'close' : 'document-scanner'}
+              size={22}
+              color="#FFFFFF"
+            />
             <Text style={styles.ocrToggleText}>
-              {isCameraActive ? 'Fechar OCR' : 'Escanear Produto'}
+              {isCameraActive ? 'Fechar Câmera' : 'Escanear Etiqueta'}
             </Text>
           </Pressable>
         </View>
@@ -575,7 +581,7 @@ export default function AddProductScreen() {
                 disabled={isProcessing}
                 activeOpacity={0.8}>
                 {isProcessing ? (
-                  <Text style={styles.shutterIcon}>⏳</Text>
+                  <ActivityIndicator color="#FF9800" size="large" />
                 ) : (
                   <View style={styles.shutterInner} />
                 )}
@@ -593,7 +599,10 @@ export default function AddProductScreen() {
           keyboardShouldPersistTaps="handled">
           {/* Quick Products Section */}
           <View style={styles.quickProductsSection}>
-            <Text style={styles.quickProductsTitle}>⚡ Produtos Rápidos</Text>
+            <View style={styles.sectionTitleRow}>
+              <MaterialIcons name="bolt" size={20} color="#FF9800" />
+              <Text style={styles.quickProductsTitle}>Produtos Rápidos</Text>
+            </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -618,12 +627,12 @@ export default function AddProductScreen() {
               <View style={styles.imageContainer}>
                 <Image source={{ uri: imageUri }} style={styles.productImage} />
                 <Pressable style={styles.removeImageButton} onPress={handleRemovePhoto}>
-                  <Text style={styles.removeImageText}>×</Text>
+                  <MaterialIcons name="close" size={20} color="#FFFFFF" />
                 </Pressable>
               </View>
             ) : (
               <Pressable style={styles.addImageButton} onPress={handleChoosePhoto}>
-                <Text style={styles.addImageIcon}>📷</Text>
+                <MaterialIcons name="add-a-photo" size={48} color="#BDBDBD" style={styles.addImageIcon} />
                 <Text style={styles.addImageText}>Adicionar foto (opcional)</Text>
               </Pressable>
             )}
@@ -652,10 +661,12 @@ export default function AddProductScreen() {
                         style={styles.suggestionItem}
                         onPress={() => handleSelectSuggestion(item)}>
                         <View style={styles.suggestionContent}>
-                          <Text style={styles.suggestionText}>📦 {item}</Text>
+                          <MaterialIcons name="inventory-2" size={16} color="#757575" style={{ marginRight: 6 }} />
+                          <Text style={styles.suggestionText}>{item}</Text>
                           {isFavorite(item) && (
                             <View style={styles.favoriteBadge}>
-                              <Text style={styles.favoriteBadgeText}>⭐ Frequente</Text>
+                              <MaterialIcons name="star" size={12} color="#F57C00" />
+                              <Text style={styles.favoriteBadgeText}>Frequente</Text>
                             </View>
                           )}
                         </View>
@@ -682,7 +693,10 @@ export default function AddProductScreen() {
             {/* Pre-Prices Section */}
             <View style={styles.prePricesSection}>
               <View style={styles.prePricesHeader}>
-                <Text style={styles.prePricesTitle}>💰 Preços Rápidos</Text>
+                <View style={styles.sectionTitleRow}>
+                  <MaterialIcons name="payments" size={18} color="#4CAF50" />
+                  <Text style={styles.prePricesTitle}>Preços Rápidos</Text>
+                </View>
                 <Pressable
                   style={styles.sumModeToggle}
                   onPress={() => setIsSumMode(!isSumMode)}>
@@ -710,8 +724,9 @@ export default function AddProductScreen() {
               </ScrollView>
               {isSumMode && (
                 <View style={styles.sumModeHint}>
+                  <MaterialIcons name="calculate" size={16} color="#2E7D32" style={{ marginRight: 4 }} />
                   <Text style={styles.sumModeHintText}>
-                    ✨ Toque em vários valores para somar automaticamente
+                    Toque em vários valores para somar automaticamente
                   </Text>
                 </View>
               )}
@@ -814,11 +829,16 @@ const styles = StyleSheet.create({
   quickProductsSection: {
     marginBottom: 20,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
   quickProductsTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#333333',
-    marginBottom: 12,
   },
   quickProductsScroll: {
     gap: 10,
@@ -928,15 +948,17 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   sumModeHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#E8F5E9',
     padding: 10,
     borderRadius: 8,
     marginTop: 10,
   },
   sumModeHintText: {
+    flex: 1,
     fontSize: 12,
     color: '#2E7D32',
-    textAlign: 'center',
     fontWeight: '500',
   },
   addImageButton: {
@@ -949,7 +971,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   addImageIcon: {
-    fontSize: 48,
     marginBottom: 12,
   },
   addImageText: {
@@ -977,11 +998,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  removeImageText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '300',
   },
   form: {
     gap: 20,
@@ -1034,6 +1050,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   favoriteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     backgroundColor: '#FFF3E0',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1132,9 +1151,6 @@ const styles = StyleSheet.create({
   },
   ocrToggleButtonActive: {
     backgroundColor: '#F44336',
-  },
-  ocrToggleIcon: {
-    fontSize: 20,
   },
   ocrToggleText: {
     color: '#FFFFFF',
@@ -1239,9 +1255,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: '#FFFFFF',
-  },
-  shutterIcon: {
-    fontSize: 28,
   },
   processingText: {
     color: '#FFFFFF',
