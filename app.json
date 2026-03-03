@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "confere",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.antonioteca.Confere"
@@ -19,7 +18,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
@@ -34,6 +32,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withDisableLintVital",
       [
         "expo-splash-screen",
         {
@@ -49,12 +48,28 @@
       "expo-audio",
       "expo-secure-store",
       [
-        "react-native-vision-camera",
+        "expo-camera",
         {
-          "cameraPermissionText": "Allow Confere to access your camera to scan product information and take photos.",
-          "enableCodeScanner": false
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan documents and take photos."
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to select documents and images.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan documents and take photos."
+        }
+      ],
+      [
+        "rn-mlkit-ocr",
+        {
+          "ocrModels": [
+            "latin"
+          ],
+          "ocrUseBundled": true
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -3,9 +3,10 @@ import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
 import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -17,11 +18,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
-import { Camera, Frame, runAsync, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
-import { Text as TextBlock, useTextRecognition } from 'react-native-vision-camera-ocr-plus';
-import { Worklets } from 'react-native-worklets-core';
+import MlkitOcr, { OcrBlock, OcrResult } from 'rn-mlkit-ocr';
 
 interface ProductData {
   price: string;
@@ -48,15 +48,11 @@ export default function AddProductScreen() {
   const [isSumMode, setIsSumMode] = useState(false);
 
   // Estados para OCR
+  const cameraRef = useRef<CameraView>(null);
+  const [status, requestPermission] = useCameraPermissions();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
-  const [detectionSuccess, setDetectionSuccess] = useState(false);
-  const [isDetecting, setIsDetecting] = useState(false);
-  const device = useCameraDevice('back');
-  const { scanText } = useTextRecognition();
-  const productBufferRef = useRef<ProductData[]>([]);
-  const frameCountRef = useRef<number>(0);
-  const timeoutsRef = useRef<number[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Lista de produtos rápidos comuns em Angola
   const quickProducts = [
@@ -96,8 +92,8 @@ export default function AddProductScreen() {
   }, []);
 
   const requestCameraPermissionOCR = async () => {
-    Camera.requestCameraPermission().then(permission => {
-      setHasCameraPermission(permission === 'granted');
+    requestPermission().then(({ status }) => {
+      setHasCameraPermission(status === 'granted');
     });
   };
 
@@ -350,63 +346,33 @@ export default function AddProductScreen() {
     saveProduct();
   };
 
-  // Função robusta de análise OCR com blocos espaciais (otimizada para Angola)
-  const analyzeProductLabel = (data: TextBlock, frame: Frame): ProductData | null => {
-    'worklet';
-    const { width, height } = frame;
+  // Analisa os blocos OCR retornados pelo rn-mlkit-ocr para extrair nome e preço
+  const analyzeProductLabel = (ocrResult: OcrResult): ProductData | null => {
+    if (!ocrResult || !ocrResult.blocks || ocrResult.blocks.length === 0) return null;
 
-    const focusSize = 350;
-    const focusX = (width - focusSize) / 2;
-    const focusY = (height - focusSize) / 2;
+    // Enriquece blocos com coordenadas centrais usando o frame do mlkit
+    const enrichedBlocks = ocrResult.blocks.map((block: OcrBlock) => ({
+      text: block.text.trim(),
+      x: block.frame.x,
+      y: block.frame.y,
+      width: block.frame.width,
+      height: block.frame.height,
+      centerX: block.frame.x + block.frame.width / 2,
+      centerY: block.frame.y + block.frame.height / 2,
+    })).filter((b: { text: string }) => b.text.length > 0);
 
-    const focusedBlocks = [];
-    for (let i = 0; i < data.blocks.length; i++) {
-      const block = data.blocks[i];
-      const { x, y, width: bWidth, height: bHeight } = block.blockFrame;
-      const centerX = x + bWidth / 2;
-      const centerY = y + bHeight / 2;
-
-      if (centerX >= focusX && centerX <= focusX + focusSize &&
-        centerY >= focusY && centerY <= focusY + focusSize) {
-        focusedBlocks.push({
-          text: block.blockText.trim(),
-          x, y, width: bWidth, height: bHeight,
-          centerX, centerY
-        });
-      }
-    }
-
-    if (focusedBlocks.length === 0) return null;
+    if (enrichedBlocks.length === 0) return null;
 
     // PRIORIDADE 1: Blocos que contêm "Kz" ou "AKZ" (mais confiável)
-    let priceBlock = null;
-    for (let i = 0; i < focusedBlocks.length; i++) {
-      const block = focusedBlocks[i];
+    let priceBlock: (typeof enrichedBlocks[0] & { price: string }) | null = null;
+    for (const block of enrichedBlocks) {
       const textUpper = block.text.toUpperCase();
-      
       if (textUpper.includes('KZ') || textUpper.includes('AKZ')) {
         // Captura preços: "84.900 AKZ", "84.900,00 Kz", "1.500 Kz", "500,50 Kz"
         const priceMatch = block.text.match(/(\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?)\s*(?:akz|kz)/i);
         if (priceMatch) {
-          // Normaliza: 84.900,50 → 84900.50 (remove pontos, vírgula vira ponto)
+          // Normaliza: 84.900,50 → 84900.50 (remove pontos de milhar, vírgula decimal vira ponto)
           const normalizedPrice = priceMatch[1]
-            .replace(/\./g, '') // Remove separadores de milhares
-            .replace(',', '.'); // Vírgula decimal vira ponto
-          priceBlock = { ...block, price: normalizedPrice };
-          break;
-        }
-      }
-    }
-
-    // PRIORIDADE 2: Formato padrão sem "Kz" explícito
-    if (!priceBlock) {
-      for (let i = 0; i < focusedBlocks.length; i++) {
-        const block = focusedBlocks[i];
-        // Captura: "84.900", "84.900,00", "1500", "500,50"
-        const priceMatch = block.text.match(/\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?/);
-        if (priceMatch) {
-          // Normaliza o preço
-          const normalizedPrice = priceMatch[0]
             .replace(/\./g, '')
             .replace(',', '.');
           priceBlock = { ...block, price: normalizedPrice };
@@ -415,21 +381,38 @@ export default function AddProductScreen() {
       }
     }
 
+    // PRIORIDADE 2: Formato padrão sem "Kz" explícito
+    if (!priceBlock) {
+      for (const block of enrichedBlocks) {
+        const priceMatch = block.text.match(/\d{1,3}(?:[.,]\d{3})*(?:[,]\d{2})?/);
+        if (priceMatch) {
+          const normalizedPrice = priceMatch[0]
+            .replace(/\./g, '')
+            .replace(',', '.');
+          const numVal = parseFloat(normalizedPrice);
+          // Valida faixa razoável de preços em Kz (50 a 200.000 Kz)
+          if (!isNaN(numVal) && numVal >= 50 && numVal <= 200000) {
+            priceBlock = { ...block, price: normalizedPrice };
+            break;
+          }
+        }
+      }
+    }
+
     if (!priceBlock) return null;
 
-    let bestNameBlock = null;
+    // Encontra o bloco de nome mais próximo acima do bloco de preço
+    let bestNameBlock: typeof enrichedBlocks[0] | null = null;
     let minDistance = 99999;
 
-    for (let i = 0; i < focusedBlocks.length; i++) {
-      const block = focusedBlocks[i];
-
+    for (const block of enrichedBlocks) {
       if (/^\d+[.,\s]*\d*$/.test(block.text) || block.text.length < 3) continue;
       if (block.text === priceBlock.text) continue;
 
       const verticalDist = priceBlock.centerY - block.centerY;
       const horizontalDist = Math.abs(priceBlock.centerX - block.centerX);
 
-      if (verticalDist > 0 && verticalDist < 200 && horizontalDist < 150) {
+      if (verticalDist > 0 && verticalDist < 300 && horizontalDist < 200) {
         const distance = verticalDist + horizontalDist * 0.5;
         const sizeBonus = block.height > 30 ? -50 : 0;
         const totalScore = distance + sizeBonus;
@@ -443,139 +426,60 @@ export default function AddProductScreen() {
 
     return {
       price: priceBlock.price,
-      name: bestNameBlock ? bestNameBlock.text.toUpperCase() : ''
+      name: bestNameBlock ? bestNameBlock.text.toUpperCase() : '',
     };
   };
 
-  const updateProductDataJS = Worklets.createRunOnJS((data: ProductData | null) => {
-    if (!data || !data.price) return;
+  const takePictureAndOCR = async () => {
+    if (!cameraRef.current) return;
 
-    // Validação de preço razoável (50 Kz a 50.000 Kz)
-    const priceValue = parseFloat(data.price.replace(',', '.'));
-    if (isNaN(priceValue) || priceValue < 50 || priceValue > 200000) return;
+    setIsProcessing(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      const ocrResult: OcrResult = await MlkitOcr.recognizeText(photo.uri, 'latin');
 
-    // Mostra indicador de detecção em progresso
-    setIsDetecting(true);
+      const productData = analyzeProductLabel(ocrResult);
 
-    productBufferRef.current.push(data);
-
-    if (productBufferRef.current.length > 3) {
-      productBufferRef.current.shift();
-    }
-
-    if (productBufferRef.current.length < 2) return;
-
-    const priceFreq: Record<string, number> = {};
-    productBufferRef.current.forEach(p => {
-      priceFreq[p.price] = (priceFreq[p.price] || 0) + 1;
-    });
-
-    const stablePrice = Object.keys(priceFreq).find(p => priceFreq[p] >= 2);
-
-    if (stablePrice) {
-      const namesForPrice = productBufferRef.current
-        .filter(p => p.price === stablePrice && p.name.length >= 3)
-        .map(p => p.name);
-
-      if (namesForPrice.length > 0) {
-        const nameFreq: Record<string, number> = {};
-        namesForPrice.forEach(n => {
-          nameFreq[n] = (nameFreq[n] || 0) + 1;
-        });
-
-        let stableName = '';
-        let maxCount = 0;
-        for (const nm in nameFreq) {
-          if (nameFreq[nm] > maxCount) {
-            maxCount = nameFreq[nm];
-            stableName = nm;
+      if (productData && productData.price) {
+        const priceValue = parseFloat(productData.price);
+        if (!isNaN(priceValue) && priceValue > 0) {
+          setPrice(productData.price);
+          if (productData.name && productData.name.length >= 3) {
+            setName(productData.name);
           }
-        }
-
-        // Detecção bem-sucedida!
-        if (stablePrice !== price || (stableName && stableName !== name)) {
           playBeepSound();
-          // Atualiza campos
-          if (stablePrice !== price) setPrice(stablePrice);
-          if (stableName && stableName !== name) setName(stableName);
-
-          // Mostra feedback visual
-          setIsDetecting(false);
-          setDetectionSuccess(true);
-          const t1 = setTimeout(() => setDetectionSuccess(false), 2000);
-          timeoutsRef.current.push(t1);
-
-          // Auto-fecha câmera após 1.5s
-          const t2 = setTimeout(() => {
-            setIsCameraActive(false);
-            productBufferRef.current = [];
-            frameCountRef.current = 0;
-          }, 1500);
-          timeoutsRef.current.push(t2);
-        }
-      } else if (stablePrice !== price) {
-        playBeepSound();
-        setPrice(stablePrice);
-        setIsDetecting(false);
-        setDetectionSuccess(true);
-        const t1 = setTimeout(() => setDetectionSuccess(false), 2000);
-        timeoutsRef.current.push(t1);
-
-        const t2 = setTimeout(() => {
           setIsCameraActive(false);
-          productBufferRef.current = [];
-          frameCountRef.current = 0;
-        }, 1500);
-        timeoutsRef.current.push(t2);
+          Alert.alert(
+            '✅ Produto Detectado!',
+            `Preço: ${priceValue.toLocaleString('pt-AO', { minimumFractionDigits: 2 })} Kz` +
+            (productData.name ? `\nNome: ${productData.name}` : '\nNome não detectado — preencha manualmente.'),
+          );
+        } else {
+          Alert.alert(
+            '⚠️ Preço inválido',
+            'Não foi possível ler um preço válido. Tente novamente centralizando a etiqueta na área marcada.',
+          );
+        }
+      } else {
+        Alert.alert(
+          '📷 Nenhum dado encontrado',
+          'Não foi possível extrair preço da imagem. Certifique-se de que a etiqueta com o preço está visível e tente novamente.',
+        );
       }
-    } else {
-      setIsDetecting(false);
+    } catch (error) {
+      console.error('Erro ao processar imagem OCR:', error);
+      Alert.alert('Erro', 'Não foi possível processar a imagem. Tente novamente.');
+    } finally {
+      setIsProcessing(false);
     }
-  });
-
-  const frameProcessor = useFrameProcessor((frame) => {
-    'worklet';
-
-    // Throttling: processa 1 frame a cada 8 (equilíbrio performance/velocidade)
-    // frameCountRef.current++;
-    // if (frameCountRef.current % 8 !== 0) {
-    //   return;
-    // }
-
-    runAsync(frame, () => {
-      'worklet';
-      const data = scanText(frame);
-
-      if (data && data.blocks && data.blocks.length > 0) {
-        const productData = analyzeProductLabel(data, frame);
-        updateProductDataJS(productData);
-      }
-    });
-  }, [scanText]);
+  };
 
   const toggleCamera = () => {
     if (!hasCameraPermission) {
-      Alert.alert('Permissão necessária', 'Precisamos de permissão para aceder à câmera OCR.');
+      Alert.alert('Permissão necessária', 'Precisamos de permissão para aceder à câmera.');
       return;
     }
-
-    if (isCameraActive) {
-      // Fechando câmera - limpa timeouts pendentes
-      timeoutsRef.current.forEach(t => clearTimeout(t));
-      timeoutsRef.current = [];
-      
-      setIsCameraActive(false);
-      productBufferRef.current = [];
-      frameCountRef.current = 0;
-      setDetectionSuccess(false);
-      setIsDetecting(false);
-    } else {
-      // Abrindo câmera
-      setIsCameraActive(true);
-      productBufferRef.current = [];
-      frameCountRef.current = 0;
-      setIsDetecting(false);
-    }
+    setIsCameraActive(prev => !prev);
   };
 
   const saveProduct = async () => {
@@ -618,255 +522,262 @@ export default function AddProductScreen() {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}>
-      {/* Header */}
-      {isCameraActive ? <View style={{ marginTop: 20 }} /> : <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Adicionar Produto</Text>
-        <View style={{ width: 40 }} />
-      </View>}
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}>
+        {/* Header */}
+        {isCameraActive ? <View style={{ marginTop: 20 }} /> : <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>←</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>Adicionar Produto</Text>
+          <View style={{ width: 40 }} />
+        </View>}
 
-      {/* Botão Toggle Câmera OCR */}
-      <View style={styles.ocrButtonContainer}>
-        <Pressable
-          style={[styles.ocrToggleButton, isCameraActive && styles.ocrToggleButtonActive]}
-          onPress={toggleCamera}>
-          <Text style={styles.ocrToggleIcon}>{isCameraActive ? '✕' : '📷'}</Text>
-          <Text style={styles.ocrToggleText}>
-            {isCameraActive ? 'Fechar OCR' : 'Escanear Produto'}
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Câmera OCR (quando ativa) */}
-      {isCameraActive && device && (
-        <View style={styles.cameraContainer}>
-          <Camera
-            style={styles.camera}
-            device={device}
-            isActive={isCameraActive}
-            frameProcessor={frameProcessor}
-          />
-          <View style={styles.focusOverlay}>
-            <View style={styles.focusBox}>
-              <View style={[styles.corner, styles.cornerTopLeft]} />
-              <View style={[styles.corner, styles.cornerTopRight]} />
-              <View style={[styles.corner, styles.cornerBottomLeft]} />
-              <View style={[styles.corner, styles.cornerBottomRight]} />
-            </View>
-            <Text style={styles.instructionText}>Centralize o rótulo</Text>
-
-            {/* Badge de status */}
-            {isDetecting && !detectionSuccess && (
-              <View style={styles.detectingBadge}>
-                <Text style={styles.detectingBadgeText}>👁️ Detectando...</Text>
-              </View>
-            )}
-            {detectionSuccess && (
-              <View style={styles.successBadge}>
-                <Text style={styles.successBadgeText}>✓ Detectado!</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        keyboardShouldPersistTaps="handled">
-        {/* Quick Products Section */}
-        <View style={styles.quickProductsSection}>
-          <Text style={styles.quickProductsTitle}>⚡ Produtos Rápidos</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.quickProductsScroll}>
-            {quickProducts.map((product, index) => (
-              <Pressable
-                key={index}
-                style={[styles.quickProductChip, { backgroundColor: product.color }]}
-                onPress={() => handleSelectQuickProduct(product.name)}>
-                <Text style={styles.quickProductEmoji}>{product.emoji}</Text>
-                <Text style={styles.quickProductText}>
-                  {product.name.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim()}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+        {/* Botão Toggle Câmera OCR */}
+        <View style={styles.ocrButtonContainer}>
+          <Pressable
+            style={[styles.ocrToggleButton, isCameraActive && styles.ocrToggleButtonActive]}
+            onPress={toggleCamera}>
+            <Text style={styles.ocrToggleIcon}>{isCameraActive ? '✕' : '📷'}</Text>
+            <Text style={styles.ocrToggleText}>
+              {isCameraActive ? 'Fechar OCR' : 'Escanear Produto'}
+            </Text>
+          </Pressable>
         </View>
 
-        {/* Image Section */}
-        <View style={styles.imageSection}>
-          {imageUri ? (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: imageUri }} style={styles.productImage} />
-              <Pressable style={styles.removeImageButton} onPress={handleRemovePhoto}>
-                <Text style={styles.removeImageText}>×</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable style={styles.addImageButton} onPress={handleChoosePhoto}>
-              <Text style={styles.addImageIcon}>📷</Text>
-              <Text style={styles.addImageText}>Adicionar foto (opcional)</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          {/* Product Name */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Nome do produto *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex: Arroz, Óleo, Leite..."
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              onFocus={() => name.length >= 2 && setShowSuggestions(true)}
+        {/* Câmera OCR (quando ativa) */}
+        {isCameraActive && hasCameraPermission && (
+          <View style={styles.cameraContainer}>
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              ref={cameraRef}
             />
-            {showSuggestions && suggestions.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <FlatList
-                  data={suggestions}
-                  keyExtractor={(item) => item}
-                  renderItem={({ item }) => (
-                    <Pressable
-                      style={styles.suggestionItem}
-                      onPress={() => handleSelectSuggestion(item)}>
-                      <View style={styles.suggestionContent}>
-                        <Text style={styles.suggestionText}>📦 {item}</Text>
-                        {isFavorite(item) && (
-                          <View style={styles.favoriteBadge}>
-                            <Text style={styles.favoriteBadgeText}>⭐ Frequente</Text>
-                          </View>
-                        )}
-                      </View>
-                    </Pressable>
-                  )}
-                  scrollEnabled={false}
-                />
+
+            {/* Overlay com guia + botão de captura */}
+            <View style={styles.focusOverlay}>
+              <Text style={styles.instructionText}>Centralize a etiqueta com o preço</Text>
+              <View style={styles.focusBox}>
+                <View style={[styles.corner, styles.cornerTopLeft]} />
+                <View style={[styles.corner, styles.cornerTopRight]} />
+                <View style={[styles.corner, styles.cornerBottomLeft]} />
+                <View style={[styles.corner, styles.cornerBottomRight]} />
               </View>
-            )}
-          </View>
-
-          {/* Price */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Preço unitário (Kz) *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              value={price}
-              onChangeText={setPrice}
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          {/* Pre-Prices Section */}
-          <View style={styles.prePricesSection}>
-            <View style={styles.prePricesHeader}>
-              <Text style={styles.prePricesTitle}>💰 Preços Rápidos</Text>
-              <Pressable
-                style={styles.sumModeToggle}
-                onPress={() => setIsSumMode(!isSumMode)}>
-                <View style={[styles.checkbox, isSumMode && styles.checkboxActive]}>
-                  {isSumMode && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.sumModeText}>Modo Somatório</Text>
-              </Pressable>
             </View>
+
+            {/* Botão shutter na parte inferior */}
+            <View style={styles.shutterRow}>
+              <TouchableOpacity
+                style={[styles.shutterButton, isProcessing && styles.shutterButtonProcessing]}
+                onPress={takePictureAndOCR}
+                disabled={isProcessing}
+                activeOpacity={0.8}>
+                {isProcessing ? (
+                  <Text style={styles.shutterIcon}>⏳</Text>
+                ) : (
+                  <View style={styles.shutterInner} />
+                )}
+              </TouchableOpacity>
+              {isProcessing && (
+                <Text style={styles.processingText}>A processar imagem…</Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled">
+          {/* Quick Products Section */}
+          <View style={styles.quickProductsSection}>
+            <Text style={styles.quickProductsTitle}>⚡ Produtos Rápidos</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.prePricesScroll}>
-              {prePrices.map((value, index) => (
+              contentContainerStyle={styles.quickProductsScroll}>
+              {quickProducts.map((product, index) => (
                 <Pressable
                   key={index}
-                  style={styles.prePriceChip}
-                  onPress={() => handleSelectPrePrice(value)}>
-                  <Text style={styles.prePriceValue}>
-                    {value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : value}
+                  style={[styles.quickProductChip, { backgroundColor: product.color }]}
+                  onPress={() => handleSelectQuickProduct(product.name)}>
+                  <Text style={styles.quickProductEmoji}>{product.emoji}</Text>
+                  <Text style={styles.quickProductText}>
+                    {product.name.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim()}
                   </Text>
-                  <Text style={styles.prePriceCurrency}>Kz</Text>
                 </Pressable>
               ))}
             </ScrollView>
-            {isSumMode && (
-              <View style={styles.sumModeHint}>
-                <Text style={styles.sumModeHintText}>
-                  ✨ Toque em vários valores para somar automaticamente
+          </View>
+
+          {/* Image Section */}
+          <View style={styles.imageSection}>
+            {imageUri ? (
+              <View style={styles.imageContainer}>
+                <Image source={{ uri: imageUri }} style={styles.productImage} />
+                <Pressable style={styles.removeImageButton} onPress={handleRemovePhoto}>
+                  <Text style={styles.removeImageText}>×</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable style={styles.addImageButton} onPress={handleChoosePhoto}>
+                <Text style={styles.addImageIcon}>📷</Text>
+                <Text style={styles.addImageText}>Adicionar foto (opcional)</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Form */}
+          <View style={styles.form}>
+            {/* Product Name */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nome do produto *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: Arroz, Óleo, Leite..."
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                onFocus={() => name.length >= 2 && setShowSuggestions(true)}
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <FlatList
+                    data={suggestions}
+                    keyExtractor={(item) => item}
+                    renderItem={({ item }) => (
+                      <Pressable
+                        style={styles.suggestionItem}
+                        onPress={() => handleSelectSuggestion(item)}>
+                        <View style={styles.suggestionContent}>
+                          <Text style={styles.suggestionText}>📦 {item}</Text>
+                          {isFavorite(item) && (
+                            <View style={styles.favoriteBadge}>
+                              <Text style={styles.favoriteBadgeText}>⭐ Frequente</Text>
+                            </View>
+                          )}
+                        </View>
+                      </Pressable>
+                    )}
+                    scrollEnabled={false}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* Price */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Preço unitário (Kz) *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0.00"
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            {/* Pre-Prices Section */}
+            <View style={styles.prePricesSection}>
+              <View style={styles.prePricesHeader}>
+                <Text style={styles.prePricesTitle}>💰 Preços Rápidos</Text>
+                <Pressable
+                  style={styles.sumModeToggle}
+                  onPress={() => setIsSumMode(!isSumMode)}>
+                  <View style={[styles.checkbox, isSumMode && styles.checkboxActive]}>
+                    {isSumMode && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.sumModeText}>Modo Somatório</Text>
+                </Pressable>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.prePricesScroll}>
+                {prePrices.map((value, index) => (
+                  <Pressable
+                    key={index}
+                    style={styles.prePriceChip}
+                    onPress={() => handleSelectPrePrice(value)}>
+                    <Text style={styles.prePriceValue}>
+                      {value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : value}
+                    </Text>
+                    <Text style={styles.prePriceCurrency}>Kz</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              {isSumMode && (
+                <View style={styles.sumModeHint}>
+                  <Text style={styles.sumModeHintText}>
+                    ✨ Toque em vários valores para somar automaticamente
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Quantity */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Quantidade *</Text>
+              <View style={styles.quantityContainer}>
+                <Pressable
+                  style={styles.quantityButton}
+                  onPress={() => {
+                    const currentQty = parseInt(quantity) || 1;
+                    if (currentQty > 1) {
+                      setQuantity((currentQty - 1).toString());
+                    }
+                  }}>
+                  <Text style={styles.quantityButtonText}>−</Text>
+                </Pressable>
+                <TextInput
+                  style={styles.quantityInput}
+                  value={quantity}
+                  onChangeText={setQuantity}
+                  keyboardType="number-pad"
+                />
+                <Pressable
+                  style={styles.quantityButton}
+                  onPress={() => {
+                    const currentQty = parseInt(quantity) || 1;
+                    setQuantity((currentQty + 1).toString());
+                  }}>
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Total Preview */}
+            {price && quantity && parseFloat(price) > 0 && parseInt(quantity) > 0 && (
+              <View style={styles.totalPreview}>
+                <Text style={styles.totalPreviewLabel}>Subtotal:</Text>
+                <Text style={styles.totalPreviewValue}>
+                  {(parseFloat(price) * parseInt(quantity)).toLocaleString('pt-AO', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  Kz
                 </Text>
               </View>
             )}
           </View>
+        </ScrollView>
 
-          {/* Quantity */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Quantidade *</Text>
-            <View style={styles.quantityContainer}>
-              <Pressable
-                style={styles.quantityButton}
-                onPress={() => {
-                  const currentQty = parseInt(quantity) || 1;
-                  if (currentQty > 1) {
-                    setQuantity((currentQty - 1).toString());
-                  }
-                }}>
-                <Text style={styles.quantityButtonText}>−</Text>
-              </Pressable>
-              <TextInput
-                style={styles.quantityInput}
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="number-pad"
-              />
-              <Pressable
-                style={styles.quantityButton}
-                onPress={() => {
-                  const currentQty = parseInt(quantity) || 1;
-                  setQuantity((currentQty + 1).toString());
-                }}>
-                <Text style={styles.quantityButtonText}>+</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Total Preview */}
-          {price && quantity && parseFloat(price) > 0 && parseInt(quantity) > 0 && (
-            <View style={styles.totalPreview}>
-              <Text style={styles.totalPreviewLabel}>Subtotal:</Text>
-              <Text style={styles.totalPreviewValue}>
-                {(parseFloat(price) * parseInt(quantity)).toLocaleString('pt-AO', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{' '}
-                Kz
-              </Text>
-            </View>
-          )}
+        {/* Footer with Save Button */}
+        <View style={styles.footer}>
+          <Pressable
+            style={styles.saveButton}
+            onPress={handleSaveProduct}
+            disabled={isLoading}>
+            <Text style={styles.saveButtonText}>
+              {isLoading ? 'Salvando...' : 'Salvar Produto'}
+            </Text>
+          </Pressable>
         </View>
-      </ScrollView>
-
-      {/* Footer with Save Button */}
-      <View style={styles.footer}>
-        <Pressable
-          style={styles.saveButton}
-          onPress={handleSaveProduct}
-          disabled={isLoading}>
-          <Text style={styles.saveButtonText}>
-            {isLoading ? 'Salvando...' : 'Salvar Produto'}
-          </Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
-  );
-}
+      </KeyboardAvoidingView>
+    );
+  }
 
 const styles = StyleSheet.create({
   container: {
@@ -1231,7 +1142,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cameraContainer: {
-    height: 280,
+    height: 360,
     marginHorizontal: 20,
     marginTop: 8,
     marginBottom: 12,
@@ -1288,7 +1199,7 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     position: 'absolute',
-    bottom: 20,
+    top: 20,
     color: '#00ff00',
     fontSize: 12,
     fontWeight: '600',
@@ -1296,40 +1207,48 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  detectingBadge: {
+  shutterRow: {
     position: 'absolute',
-    top: 20,
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    bottom: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  shutterButton: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  detectingBadgeText: {
+  shutterButtonProcessing: {
+    backgroundColor: 'rgba(255,152,0,0.4)',
+    borderColor: '#FF9800',
+  },
+  shutterInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+  },
+  shutterIcon: {
+    fontSize: 28,
+  },
+  processingText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  successBadge: {
-    position: 'absolute',
-    top: 20,
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  successBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });
