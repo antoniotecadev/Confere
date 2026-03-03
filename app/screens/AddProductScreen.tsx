@@ -55,6 +55,9 @@ export default function AddProductScreen() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Lista de produtos rápidos comuns em Angola
   const quickProducts = [
@@ -262,7 +265,7 @@ export default function AddProductScreen() {
     return true;
   };
 
-  const handleSaveProduct = async () => {
+  const handleSaveProduct = async (andExit = false) => {
     if (!validateForm()) return;
 
     const priceValue = parseFloat(price);
@@ -289,7 +292,7 @@ export default function AddProductScreen() {
             },
             {
               text: 'Adicionar Mesmo Assim',
-              onPress: () => checkPriceAlert(priceValue, supermarketName),
+              onPress: () => checkPriceAlert(priceValue, supermarketName, andExit),
             },
           ]
         );
@@ -306,7 +309,7 @@ export default function AddProductScreen() {
           [
             {
               text: 'OK, Entendi',
-              onPress: () => checkPriceAlert(priceValue, supermarketName),
+              onPress: () => checkPriceAlert(priceValue, supermarketName, andExit),
             },
           ]
         );
@@ -315,10 +318,10 @@ export default function AddProductScreen() {
     }
 
     // Se passou da verificação de orçamento, verificar alerta de preço
-    checkPriceAlert(priceValue, supermarketName);
+    checkPriceAlert(priceValue, supermarketName, andExit);
   };
 
-  const checkPriceAlert = async (priceValue: number, supermarketName: string | undefined) => {
+  const checkPriceAlert = async (priceValue: number, supermarketName: string | undefined, andExit = false) => {
     // Verificar alerta de preço se soubermos o supermercado
     if (supermarketName) {
       const alert = await PriceAlertService.analyzePriceInSupermarket(
@@ -335,7 +338,7 @@ export default function AddProductScreen() {
           [
             {
               text: 'Adicionar Produto',
-              onPress: () => saveProduct(),
+              onPress: () => saveProduct(andExit),
             },
           ],
           { cancelable: false }
@@ -345,7 +348,7 @@ export default function AddProductScreen() {
     }
 
     // Se não houver alert ou for preço normal, salvar direto
-    saveProduct();
+    saveProduct(andExit);
   };
 
   // Analisa os blocos OCR retornados pelo rn-mlkit-ocr para extrair nome e preço
@@ -484,7 +487,22 @@ export default function AddProductScreen() {
     setIsCameraActive(prev => !prev);
   };
 
-  const saveProduct = async () => {
+  const resetForm = () => {
+    setName('');
+    setPrice('');
+    setQuantity('1');
+    setImageUri(null);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const triggerSuccessBanner = () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    setShowSuccessBanner(true);
+    successTimerRef.current = setTimeout(() => setShowSuccessBanner(false), 2500);
+  };
+
+  const saveProduct = async (andExit = false) => {
     const cartId = params.id as string;
 
     try {
@@ -495,29 +513,41 @@ export default function AddProductScreen() {
         return;
       }
 
+      const productPrice = parseFloat(price);
+      const productQty = parseInt(quantity);
+
       // Criar novo produto
       const newProduct: CartItem = {
         id: Date.now().toString(),
         name: name.trim(),
-        price: parseFloat(price),
-        quantity: parseInt(quantity),
+        price: productPrice,
+        quantity: productQty,
         imageUri: imageUri || undefined,
       };
 
       // Adicionar produto ao carrinho
       const updatedItems = [...cart.items, newProduct];
+      const newTotal = updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const updatedCart: Cart = {
         ...cart,
         items: updatedItems,
-        total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        total: newTotal,
         date: new Date().toISOString(),
       };
 
       // Salvar no AsyncStorage
       await CartsStorage.updateCart(updatedCart);
 
-      // Voltar para CartScreen
-      router.back();
+      if (andExit) {
+        router.back();
+        return;
+      }
+
+      // Atualiza o total local para os alertas de orçamento seguintes
+      setCurrentTotal(newTotal);
+      setSavedCount(prev => prev + 1);
+      resetForm();
+      triggerSuccessBanner();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
       Alert.alert('Erro', 'Não foi possível salvar o produto.');
@@ -534,8 +564,20 @@ export default function AddProductScreen() {
             <Text style={styles.backButtonText}>←</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Adicionar Produto</Text>
-          <View style={{ width: 40 }} />
+          {savedCount > 0 ? (
+            <View style={styles.savedCountBadge}>
+              <Text style={styles.savedCountText}>{savedCount}</Text>
+            </View>
+          ) : <View style={{ width: 40 }} />}
         </View>}
+
+        {/* Banner de sucesso */}
+        {showSuccessBanner && (
+          <View style={styles.successBanner}>
+            <MaterialIcons name="check-circle" size={20} color="#FFFFFF" />
+            <Text style={styles.successBannerText}>Produto adicionado ao carrinho!</Text>
+          </View>
+        )}
 
         {/* Botão Toggle Câmera OCR */}
         <View style={styles.ocrButtonContainer}>
@@ -782,12 +824,20 @@ export default function AddProductScreen() {
         {/* Footer with Save Button */}
         <View style={styles.footer}>
           <Pressable
-            style={styles.saveButton}
-            onPress={handleSaveProduct}
+            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+            onPress={() => handleSaveProduct(false)}
             disabled={isLoading}>
+            <MaterialIcons name="add-shopping-cart" size={20} color="#FFFFFF" />
             <Text style={styles.saveButtonText}>
-              {isLoading ? 'Salvando...' : 'Salvar Produto'}
+              {isLoading ? 'Salvando...' : 'Adicionar Produto'}
             </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.finishButton, isLoading && styles.saveButtonDisabled]}
+            onPress={() => router.back()}
+            disabled={isLoading}>
+            <MaterialIcons name="shopping-cart" size={20} color="#2196F3" />
+            <Text style={styles.finishButtonText}>Carrinho</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -1113,19 +1163,72 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
+    padding: 16,
+    gap: 10,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
   },
   saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#2196F3',
     borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
+    paddingVertical: 15,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
   saveButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  finishButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#2196F3',
+    backgroundColor: '#FFFFFF',
+  },
+  finishButtonText: {
+    color: '#2196F3',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#43A047',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: 10,
+  },
+  successBannerText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  savedCountBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savedCountText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: 'bold',
   },
   ocrButtonContainer: {
