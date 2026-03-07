@@ -242,7 +242,7 @@ class PremiumServiceClass {
   /**
    * Envia comprovativo de pagamento Multicaixa
    */
-  async submitPayment(receiptUri: string, amount: number = 1500): Promise<{ success: boolean; message?: string }> {
+  async submitPayment(receiptUri: string, amount: number = 1500, durationDays: number = 30): Promise<{ success: boolean; message?: string }> {
     try {
       const userId = await UserService.getUserId();
 
@@ -263,6 +263,7 @@ class PremiumServiceClass {
 
       const payment = {
         amount,
+        durationDays,
         receiptUri,
         deviceInfo,
         status: 'pending',

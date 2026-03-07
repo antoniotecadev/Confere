@@ -17,6 +17,63 @@ import {
   View
 } from 'react-native';
 
+// ─── Pacotes de subscrição ───────────────────────────────────────────────────
+const PACKAGES = [
+  {
+    id: 'monthly',
+    label: '1 Mês',
+    months: 1,
+    durationDays: 30,
+    price: 1500,
+    originalPrice: 1500,
+    discountPercent: 0,
+    badge: null as string | null,
+    highlight: false,
+    pricePerMonth: 1500,
+    savingNote: null as string | null,
+  },
+  {
+    id: '3months',
+    label: '3 Meses',
+    months: 3,
+    durationDays: 90,
+    price: 3900,
+    originalPrice: 4500,
+    discountPercent: 13,
+    badge: '-13%',
+    highlight: false,
+    pricePerMonth: 1300,
+    savingNote: 'Economiza 600 Kz',
+  },
+  {
+    id: '6months',
+    label: '6 Meses',
+    months: 6,
+    durationDays: 180,
+    price: 7500,
+    originalPrice: 9000,
+    discountPercent: 17,
+    badge: 'POPULAR',
+    highlight: true,
+    pricePerMonth: 1250,
+    savingNote: '1 mês GRÁTIS',
+  },
+  {
+    id: 'annual',
+    label: '1 Ano',
+    months: 12,
+    durationDays: 365,
+    price: 12000,
+    originalPrice: 18000,
+    discountPercent: 33,
+    badge: 'MELHOR VALOR',
+    highlight: false,
+    pricePerMonth: 1000,
+    savingNote: '4 meses GRÁTIS',
+  },
+] as const;
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function PremiumScreen() {
   const router = useRouter();
   const [isPremium, setIsPremium] = useState(false);
@@ -28,13 +85,18 @@ export default function PremiumScreen() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | 'expired' | null>(null);
   const [lastSync, setLastSync] = useState<number>(0);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('monthly');
+
+  const selectedPackage = PACKAGES.find(p => p.id === selectedPackageId) ?? PACKAGES[0];
 
   // Dados bancários (substitua com os seus)
   const BANK_INFO = {
     bank: 'BAI',
     iban: 'AO06 0055 0000 1234 5678 9012 3',
     accountName: 'Confere Angola, Lda',
-    amount: '1.500,00 Kz',
+    get amount() {
+      return `${selectedPackage.price.toLocaleString('pt-AO')},00 Kz`;
+    },
   };
 
   useEffect(() => {
@@ -112,7 +174,7 @@ export default function PremiumScreen() {
     setIsSubmitting(true);
 
     try {
-      const result = await PremiumService.submitPayment(receiptUri, 1500);
+      const result = await PremiumService.submitPayment(receiptUri, selectedPackage.price, selectedPackage.durationDays);
 
       if (result.success) {
         Alert.alert(
@@ -264,9 +326,65 @@ export default function PremiumScreen() {
         <Text style={styles.headerSubtitle}>Desbloqueie todos os recursos</Text>
       </View>
 
-      <View style={styles.priceCard}>
-        <Text style={styles.priceAmount}>1.500 Kz</Text>
-        <Text style={styles.pricePeriod}>por mês</Text>
+      {/* ── Selecção de Pacote ── */}
+      <View style={styles.packagesContainer}>
+        <Text style={styles.packagesTitle}>Escolha o seu Plano</Text>
+        {PACKAGES.map((pkg) => {
+          const isSelected = selectedPackageId === pkg.id;
+          return (
+            <Pressable
+              key={pkg.id}
+              style={[
+                styles.packageCard,
+                isSelected && styles.packageCardSelected,
+                pkg.highlight && styles.packageCardHighlight,
+              ]}
+              onPress={() => setSelectedPackageId(pkg.id)}
+            >
+              {/* Badge no topo */}
+              {pkg.badge && (
+                <View style={[
+                  styles.packageBadge,
+                  pkg.highlight ? styles.packageBadgeHighlight : styles.packageBadgeNormal,
+                ]}>
+                  <Text style={styles.packageBadgeText}>{pkg.badge}</Text>
+                </View>
+              )}
+
+              <View style={styles.packageRow}>
+                {/* Indicador de selecção */}
+                <View style={[styles.packageRadio, isSelected && styles.packageRadioSelected]}>
+                  {isSelected && <View style={styles.packageRadioDot} />}
+                </View>
+
+                {/* Info do pacote */}
+                <View style={styles.packageInfo}>
+                  <Text style={[styles.packageLabel, isSelected && styles.packageLabelSelected]}>
+                    {pkg.label}
+                  </Text>
+                  {pkg.savingNote && (
+                    <Text style={styles.packageSaving}>{pkg.savingNote}</Text>
+                  )}
+                </View>
+
+                {/* Preço */}
+                <View style={styles.packagePricing}>
+                  {pkg.originalPrice !== pkg.price && (
+                    <Text style={styles.packageOriginalPrice}>
+                      {pkg.originalPrice.toLocaleString('pt-AO')} Kz
+                    </Text>
+                  )}
+                  <Text style={[styles.packagePrice, isSelected && styles.packagePriceSelected]}>
+                    {pkg.price.toLocaleString('pt-AO')} Kz
+                  </Text>
+                  <Text style={styles.packagePerMonth}>
+                    {pkg.pricePerMonth.toLocaleString('pt-AO')} Kz/mês
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={styles.benefitsContainer}>
@@ -479,23 +597,117 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666666',
   },
-  priceCard: {
-    backgroundColor: '#4CAF50',
+  // ── Pacotes ──────────────────────────────────────────────────────────────────
+  packagesContainer: {
     margin: 16,
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
+    marginTop: 4,
   },
-  priceAmount: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  pricePeriod: {
+  packagesTitle: {
     fontSize: 18,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 12,
+    textAlign: 'center',
   },
+  packageCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    marginBottom: 10,
+    padding: 14,
+    paddingTop: 14,
+    overflow: 'hidden',
+  },
+  packageCardSelected: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#F1F8E9',
+  },
+  packageCardHighlight: {
+    borderColor: '#9C27B0',
+  },
+  packageBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderBottomLeftRadius: 8,
+  },
+  packageBadgeHighlight: {
+    backgroundColor: '#9C27B0',
+  },
+  packageBadgeNormal: {
+    backgroundColor: '#FF7043',
+  },
+  packageBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  packageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  packageRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#BDBDBD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  packageRadioSelected: {
+    borderColor: '#4CAF50',
+  },
+  packageRadioDot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#4CAF50',
+  },
+  packageInfo: {
+    flex: 1,
+  },
+  packageLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333333',
+  },
+  packageLabelSelected: {
+    color: '#2E7D32',
+  },
+  packageSaving: {
+    fontSize: 12,
+    color: '#E65100',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  packagePricing: {
+    alignItems: 'flex-end',
+  },
+  packageOriginalPrice: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    textDecorationLine: 'line-through',
+  },
+  packagePrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  packagePriceSelected: {
+    color: '#2E7D32',
+  },
+  packagePerMonth: {
+    fontSize: 11,
+    color: '#757575',
+    marginTop: 1,
+  },
+  // ─────────────────────────────────────────────────────────────────────────────
   benefitsContainer: {
     backgroundColor: '#FFFFFF',
     margin: 16,
