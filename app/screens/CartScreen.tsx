@@ -402,12 +402,12 @@ export default function CartScreen() {
                     ]}
                     onPress={() => setSupermarket(market.name)}>
                     <Image source={market.logo} style={styles.supermarketChipLogo} />
-                    <Text style={[
+                    {/* <Text style={[
                       styles.supermarketChipText,
                       supermarket === market.name && styles.supermarketChipTextSelected
                     ]}>
                       {market.name}
-                    </Text>
+                    </Text> */}
                   </Pressable>
                 ))}
               </ScrollView>
@@ -917,10 +917,8 @@ const styles = StyleSheet.create({
   supermarketChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-    paddingVertical: 8,
     paddingHorizontal: 12,
+    borderRadius: 6,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -929,11 +927,13 @@ const styles = StyleSheet.create({
     borderColor: '#2196F3',
   },
   supermarketChipLogo: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 6,
-    backgroundColor: '#FFFFFF',
+    width: undefined,
+    height: 48,
+    aspectRatio: 2,
+    flex: 1,
+    resizeMode: 'contain',
+    borderRadius: 6,
+    // marginRight: 6,
   },
   supermarketChipText: {
     fontSize: 14,

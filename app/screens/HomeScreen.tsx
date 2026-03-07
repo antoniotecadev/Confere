@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 8,
-    backgroundColor: '#F5F5F5',
+    // backgroundColor: '#F5F5F5',
   },
   cartInfo: {
     flex: 1,
