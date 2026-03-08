@@ -12,7 +12,7 @@ export interface PremiumStatus {
   isPremium: boolean;
   expiresAt: number | null;
   paymentMethod: 'google' | 'multicaixa' | null;
-  status: 'pending' | 'approved' | 'rejected' | 'expired' | null;
+  status: 'pending' | 'approved' | 'rejected' | 'expired'  | 'inactive' | null;
   lastSync: number;
 }
 

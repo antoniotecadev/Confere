@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 export interface PremiumGuardState {
     hasAccess: boolean;
     loading: boolean;
-    status: 'pending' | 'approved' | 'rejected' | 'expired' | null;
+    status: 'pending' | 'approved' | 'rejected' | 'expired' | 'inactive' | null;
     showBlockModal: boolean;
     expiresAt: number | null;
 }

@@ -2,18 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import {
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface PremiumBlockModalProps {
   visible: boolean;
   onClose: () => void;
-  status?: 'pending' | 'approved' | 'rejected' | 'expired' | null;
+  status?: 'pending' | 'approved' | 'rejected' | 'expired' | 'inactive' | null;
   expiresAt?: number | null;
 }
 
@@ -24,6 +24,7 @@ interface PremiumBlockModalProps {
  * - pending: Pagamento em análise (aguarde 24-48h)
  * - rejected: Pagamento recusado (tente novamente)
  * - expired: Assinatura expirou (renove)
+ * - inactive: Acesso bloqueado (contacte o suporte)
  * - null: Não possui Premium (assine agora)
  */
 export function PremiumBlockModal({ visible, onClose, status, expiresAt }: PremiumBlockModalProps) {
@@ -84,6 +85,16 @@ export function PremiumBlockModal({ visible, onClose, status, expiresAt }: Premi
           title: 'Assinatura Expirou',
           message: expiredMessage,
           buttonText: 'Renovar Agora',
+          showCloseButton: true,
+        };
+
+        case 'inactive':
+         return {
+          icon: 'close-circle-outline' as const,
+          iconColor: '#E53935',
+          title: 'Acesso Bloqueado',
+          message: `🚫 Status: Inativo\n\nO teu acesso Premium foi desativado por um administrador.\n\n🔍 Possíveis motivos:\n• Violação dos termos de uso\n• Actividade suspeita na conta\n• Solicitação de suporte pendente\n\n✅ O que fazer:\n1. Contacta o suporte para esclarecer a situação\n2. Se for um erro, eles poderão reactivar o teu acesso\n3. Evita acções que possam ser interpretadas como violação dos termos`,
+          buttonText: 'Contactar Suporte',
           showCloseButton: true,
         };
       
