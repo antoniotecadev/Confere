@@ -5,11 +5,13 @@ import NetInfo from '@react-native-community/netinfo';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -168,50 +170,110 @@ export default function PremiumScreen() {
     }
   };
 
-  const handlePickReceipt = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert('Permissão Negada', 'Precisamos de acesso à galeria para anexar o comprovativo.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setReceiptUri(result.assets[0].uri);
-    }
+  const handlePickReceipt = () => {
+    Alert.alert(
+      'Comprovativo',
+      'Como queres adicionar o comprovativo?',
+      [
+        {
+          text: '📷 Câmara',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permissão Negada', 'Precisamos de acesso à câmara para tirar a foto.');
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              quality: 0.8,
+            });
+            if (!result.canceled) setReceiptUri(result.assets[0].uri);
+          },
+        },
+        {
+          text: '🖼️ Galeria',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permissão Negada', 'Precisamos de acesso à galeria para anexar o comprovativo.');
+              return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: 'images',
+              allowsEditing: true,
+              quality: 0.8,
+            });
+            if (!result.canceled) setReceiptUri(result.assets[0].uri);
+          },
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    );
   };
+
+  const SUPPORT_WHATSAPP = '244932359808';
 
   const handleSubmitPayment = async () => {
     if (!receiptUri) {
-      Alert.alert('Comprovativo Necessário', 'Por favor, anexe o comprovativo de pagamento.');
+      Alert.alert('Comprovativo Necessário', 'Por favor, adiciona o comprovativo de pagamento.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const result = await PremiumService.submitPayment(receiptUri, selectedPackage.price, selectedPackage.durationDays);
+      // 1. Registar no Firebase (sem URL de imagem — entregue via WhatsApp)
+      const result = await PremiumService.submitPayment('', selectedPackage.price, selectedPackage.durationDays);
 
-      if (result.success) {
-        Alert.alert(
-          'Pagamento Enviado! ✅',
-          'Seu comprovativo foi enviado com sucesso.\n\nVamos validar o pagamento em até 24 horas e activar seu Premium automaticamente.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back(),
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Aviso', result.message || 'Não foi possível enviar o pagamento.');
+      if (!result.success) {
+        Alert.alert('Aviso', result.message || 'Não foi possível registar o pagamento.');
+        return;
       }
+
+      // 2. Construir mensagem WhatsApp com detalhes do pagamento
+      const planLabel = selectedPackage.label;
+      const amount    = selectedPackage.price.toLocaleString('pt-AO');
+      const dateStr   = new Date().toLocaleDateString('pt-AO');
+      const waMessage =
+        `*Comprovativo de Pagamento — Confere* 🛒\n\n` +
+        `💎 Plano: ${planLabel}\n` +
+        `💰 Valor: ${amount} Kz\n` +
+        `📅 Data: ${dateStr}\n\n` +
+        `_(A imagem do comprovativo segue em anexo)_`;
+
+      // 3. Abrir WhatsApp com mensagem pré-preenchida
+      const waUrls = [
+        `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(waMessage)}`,
+        `whatsapp://send?phone=${SUPPORT_WHATSAPP}&text=${encodeURIComponent(waMessage)}`,
+      ];
+
+      let whatsappOpened = false;
+      for (const url of waUrls) {
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+          await Linking.openURL(url);
+          whatsappOpened = true;
+          break;
+        }
+      }
+
+      // 4. Partilhar imagem via sheet nativo (utilizador selecciona WhatsApp)
+      const sharingAvailable = await Sharing.isAvailableAsync();
+      if (sharingAvailable) {
+        await new Promise(res => setTimeout(res, whatsappOpened ? 1200 : 0));
+        await Sharing.shareAsync(receiptUri, {
+          mimeType:    'image/jpeg',
+          dialogTitle: 'Enviar comprovativo ao Confere',
+        });
+      }
+
+      Alert.alert(
+        'Pagamento Registado! ✅',
+        whatsappOpened
+          ? 'Os detalhes foram enviados via WhatsApp.\n\nAnexa a imagem do comprovativo na conversa e envia.\n\nVamos validar em até 24 horas.'
+          : 'Pagamento registado!\n\nPartilha a imagem do comprovativo via WhatsApp com o nosso suporte.\n\nVamos validar em até 24 horas.',
+        [{ text: 'OK', onPress: () => null }]
+      );
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro ao enviar o pagamento.');
     } finally {
@@ -509,7 +571,7 @@ export default function PremiumScreen() {
               <View style={styles.stepNumberContainer}>
                 <Text style={styles.stepNumber}>4</Text>
               </View>
-              <Text style={styles.stepText}>Anexe o comprovativo abaixo:</Text>
+              <Text style={styles.stepText}>Fotografa ou selecciona o comprovativo:</Text>
             </View>
 
             {receiptUri ? (
@@ -522,7 +584,8 @@ export default function PremiumScreen() {
             ) : (
               <Pressable style={styles.uploadButton} onPress={handlePickReceipt}>
                 <Ionicons name="camera-outline" size={24} color="#FFFFFF" style={styles.uploadIcon} />
-                <Text style={styles.uploadButtonText}>Anexar Comprovativo</Text>
+                <Text style={styles.uploadButtonText}>|</Text>
+                <Ionicons name="image-outline" size={24} color="#FFFFFF" style={{ marginLeft: 8 }} />
               </Pressable>
             )}
 
