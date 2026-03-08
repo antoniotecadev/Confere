@@ -283,29 +283,6 @@ class PremiumServiceClass {
   }
 
   /**
-   * Ativa Premium manualmente (usado pelo admin)
-   * ⚠️ Esta função é executada pelo ADMIN (outro dispositivo)
-   * O USUÁRIO vai sincronizar automaticamente quando abrir o app
-   */
-  async activatePremium(userId: string, durationDays: number = 30): Promise<void> {
-    const expiresAt = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
-    const expiryDate = new Date(expiresAt).toLocaleString('pt-AO');
-
-    const userRef = ref(database, `users/${userId}`);
-    await set(userRef, {
-      isPremium: true,
-      status: 'approved',
-      expiresAt,
-      paymentMethod: 'multicaixa',
-      updatedAt: serverTimestamp(),
-    });
-
-    console.log(`[Premium Admin] ✅ Usuário ${userId} ativado até: ${expiryDate}`);
-    // Nota: Não sincroniza localmente porque admin está noutro dispositivo
-    // O usuário vai sincronizar automaticamente quando abrir o app
-  }
-
-  /**
    * Força atualização do cache
    */
   async refreshStatus(): Promise<PremiumStatus> {

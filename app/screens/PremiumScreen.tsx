@@ -83,9 +83,30 @@ export default function PremiumScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | 'expired' | null>(null);
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected' | 'expired' | 'inactive' | null>(null);
   const [lastSync, setLastSync] = useState<number>(0);
   const [selectedPackageId, setSelectedPackageId] = useState<string>('monthly');
+
+  // ── Trigger secreto para o admin (7 toques em 4 segundos no ícone) ──────────
+  const secretTapCount  = React.useRef(0);
+  const secretTapTimer  = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SECRET_TAPS     = 7;
+  const SECRET_WINDOW   = 4000; // ms
+
+  const handleSecretTap = () => {
+    secretTapCount.current += 1;
+
+    if (secretTapTimer.current) clearTimeout(secretTapTimer.current);
+    secretTapTimer.current = setTimeout(() => {
+      secretTapCount.current = 0;
+    }, SECRET_WINDOW);
+
+    if (secretTapCount.current >= SECRET_TAPS) {
+      secretTapCount.current = 0;
+      clearTimeout(secretTapTimer.current!);
+      router.push('/admin/login' as any);
+    }
+  };
 
   const selectedPackage = PACKAGES.find(p => p.id === selectedPackageId) ?? PACKAGES[0];
 
@@ -100,6 +121,7 @@ export default function PremiumScreen() {
   };
 
   useEffect(() => {
+    // router.push('/admin/login' as any);
     loadPremiumStatus();
   }, []);
 
@@ -226,7 +248,7 @@ export default function PremiumScreen() {
   };
 
   if (isPremium) {
-    const expiryDate = expiresAt ? new Date(expiresAt).toLocaleDateString('pt-AO') : 'Ilimitado';
+    const expiryDate = expiresAt ? new Date(expiresAt).toLocaleDateString('pt-AO') : '—';
 
     return (
       <ScrollView style={styles.container}>
@@ -241,7 +263,7 @@ export default function PremiumScreen() {
             <Text style={styles.infoLabel}>Status:</Text>
             <View style={styles.badgeContainer}>
               <Ionicons name="checkmark-circle" size={20} color="#4CAF50" style={styles.badgeIcon} />
-              <Text style={[styles.infoValue, styles.premiumBadge]}>Ativo</Text>
+              <Text style={[styles.infoValue, styles.premiumBadge]}>Activo</Text>
             </View>
           </View>
           <View style={styles.infoRow}>
@@ -321,7 +343,10 @@ export default function PremiumScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="diamond" size={64} color="#9C27B0" style={styles.headerIcon} />
+        {/* Toque 7× aqui em 4 segundos para aceder ao painel admin */}
+        <Pressable onPress={handleSecretTap} style={styles.headerIconPressable}>
+          <Ionicons name="diamond" size={64} color="#9C27B0" />
+        </Pressable>
         <Text style={styles.headerTitle}>Confere Premium</Text>
         <Text style={styles.headerSubtitle}>Desbloqueie todos os recursos</Text>
       </View>
@@ -586,6 +611,10 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     marginBottom: 16,
+  },
+  headerIconPressable: {
+    marginBottom: 16,
+    padding: 8, // área de toque maior, mas invisível
   },
   headerTitle: {
     fontSize: 28,

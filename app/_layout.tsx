@@ -26,6 +26,8 @@ export default function RootLayout() {
             <Stack.Screen name="screens/HistoryScreen" options={{ headerShown: false }} />
             <Stack.Screen name="screens/SettingsScreen" options={{ headerShown: false }} />
             <Stack.Screen name="screens/PriceComparisonScreen" options={{ headerShown: false }} />
+            {/* Admin — carregado lazily, só quando navegado */}
+            <Stack.Screen name="admin" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
