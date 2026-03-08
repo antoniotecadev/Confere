@@ -33,6 +33,11 @@ export function PremiumBlockModal({ visible, onClose, status, expiresAt }: Premi
     router.push('/screens/PremiumScreen' as any);
   };
 
+  const handleContactSupport = () => {
+    onClose();
+    router.push('/screens/ContactScreen' as any);
+  }
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('pt-AO', {
@@ -91,6 +96,7 @@ export function PremiumBlockModal({ visible, onClose, status, expiresAt }: Premi
         case 'inactive':
          return {
           icon: 'close-circle-outline' as const,
+          support: true,
           iconColor: '#E53935',
           title: 'Acesso Bloqueado',
           message: `🚫 Status: Inativo\n\nO teu acesso Premium foi desativado por um administrador.\n\n🔍 Possíveis motivos:\n• Violação dos termos de uso\n• Actividade suspeita na conta\n• Solicitação de suporte pendente\n\n✅ O que fazer:\n1. Contacta o suporte para esclarecer a situação\n2. Se for um erro, eles poderão reactivar o teu acesso\n3. Evita acções que possam ser interpretadas como violação dos termos`,
@@ -135,7 +141,7 @@ export function PremiumBlockModal({ visible, onClose, status, expiresAt }: Premi
           {/* Botão Principal */}
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: content.iconColor }]}
-            onPress={handleGoToPremium}
+            onPress={content.support ? handleContactSupport : handleGoToPremium}
             activeOpacity={0.8}
           >
             <Text style={styles.primaryButtonText}>{content.buttonText}</Text>
