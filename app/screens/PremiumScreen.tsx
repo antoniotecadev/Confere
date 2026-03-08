@@ -123,7 +123,6 @@ export default function PremiumScreen() {
   };
 
   useEffect(() => {
-    // router.push('/admin/login' as any);
     loadPremiumStatus();
   }, []);
 
