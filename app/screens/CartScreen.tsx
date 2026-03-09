@@ -2,13 +2,13 @@ import { PremiumBlockModal } from '@/components/PremiumBlockModal';
 import { usePremiumGuard } from '@/hooks/usePremiumGuard';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
+import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,

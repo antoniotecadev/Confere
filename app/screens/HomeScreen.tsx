@@ -4,13 +4,13 @@ import { ComparisonsStorage } from '@/utils/comparisons-storage';
 import { getFeatureInfo } from '@/utils/features-info';
 import { getSupermarketLogo } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
   FlatList,
-  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -123,14 +123,14 @@ export default function HomeScreen() {
 
   const toggleFabs = () => {
     const toValue = fabsVisible ? 0 : 1;
-    
+
     Animated.spring(fabsAnimation, {
       toValue,
       useNativeDriver: true,
       friction: 8,
       tension: 40,
     }).start();
-    
+
     setFabsVisible(!fabsVisible);
   };
 
@@ -228,9 +228,9 @@ export default function HomeScreen() {
       />
 
       {/* Floating Action Buttons */}
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.fabContainer, 
+          styles.fabContainer,
           { bottom: 380 },
           { opacity: fabsAnimation },
         ]}>
@@ -247,9 +247,9 @@ export default function HomeScreen() {
         </Pressable>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.fabContainer, 
+          styles.fabContainer,
           { bottom: 310 },
           { opacity: fabsAnimation },
         ]}>
@@ -266,9 +266,9 @@ export default function HomeScreen() {
         </Pressable>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.fabContainer, 
+          styles.fabContainer,
           { bottom: 240 },
           { opacity: fabsAnimation },
         ]}>
@@ -285,9 +285,9 @@ export default function HomeScreen() {
         </Pressable>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.fabContainer, 
+          styles.fabContainer,
           { bottom: 170 },
           { opacity: fabsAnimation },
         ]}>
@@ -304,9 +304,9 @@ export default function HomeScreen() {
         </Pressable>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.fabContainer, 
+          styles.fabContainer,
           { bottom: 100 },
           { opacity: fabsAnimation },
         ]}>
@@ -323,9 +323,9 @@ export default function HomeScreen() {
         </Pressable>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.fabContainer, 
+          styles.fabContainer,
           { bottom: 30 },
           { opacity: fabsAnimation },
         ]}>
@@ -346,10 +346,10 @@ export default function HomeScreen() {
       <Pressable
         style={styles.fabToggle}
         onPress={toggleFabs}>
-        <Ionicons 
-          name={fabsVisible ? "eye-off-outline" : "eye-outline"} 
-          size={24} 
-          color="#FFFFFF" 
+        <Ionicons
+          name={fabsVisible ? "eye-off-outline" : "eye-outline"}
+          size={24}
+          color="#FFFFFF"
         />
       </Pressable>
 
@@ -368,35 +368,35 @@ export default function HomeScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setSelectedFeature(null)}>
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={() => setSelectedFeature(null)}>
-          <Pressable 
+          <Pressable
             style={styles.modalContent}
             onPress={(e) => e.stopPropagation()}>
             {selectedFeature && (() => {
               const featureInfo = getFeatureInfo(selectedFeature);
               if (!featureInfo) return null;
-              
+
               return (
                 <>
                   <View style={styles.modalHeader}>
                     <View style={styles.modalHeaderLeft}>
-                      <Ionicons 
-                        name={featureInfo.icon as any} 
-                        size={32} 
-                        color="#2196F3" 
+                      <Ionicons
+                        name={featureInfo.icon as any}
+                        size={32}
+                        color="#2196F3"
                       />
                       <Text style={styles.modalTitle}>{featureInfo.title}</Text>
                     </View>
-                    <Pressable 
+                    <Pressable
                       onPress={() => setSelectedFeature(null)}
                       style={styles.modalCloseButton}>
                       <Ionicons name="close" size={28} color="#666666" />
                     </Pressable>
                   </View>
 
-                  <ScrollView 
+                  <ScrollView
                     style={styles.modalBody}
                     showsVerticalScrollIndicator={false}>
                     <Text style={styles.modalDescription}>

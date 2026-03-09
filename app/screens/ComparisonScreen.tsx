@@ -2,13 +2,13 @@ import { useAudioFeedback } from '@/context/AudioFeedbackProvider';
 import { CartsStorage } from '@/utils/carts-storage';
 import { Comparison, ComparisonsStorage } from '@/utils/comparisons-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Animated,
-  Image,
   Modal,
   Pressable,
   ScrollView,

@@ -1,11 +1,11 @@
 import { Comparison, ComparisonsStorage } from '@/utils/comparisons-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -136,23 +136,23 @@ export default function HistoryScreen() {
             <Text style={styles.supermarketName}>{item.supermarket}</Text>
           </View>
           <View style={[
-            styles.statusBadge, 
-            item.matches 
-              ? styles.statusBadgeSuccess 
-              : item.difference > 0 
-                ? styles.statusBadgeError 
+            styles.statusBadge,
+            item.matches
+              ? styles.statusBadgeSuccess
+              : item.difference > 0
+                ? styles.statusBadgeError
                 : styles.statusBadgeInfo
           ]}>
-            <Ionicons 
+            <Ionicons
               name={
-                item.matches 
-                  ? "checkmark-circle" 
-                  : item.difference > 0 
-                    ? "close-circle" 
+                item.matches
+                  ? "checkmark-circle"
+                  : item.difference > 0
+                    ? "close-circle"
                     : "information-circle"
-              } 
-              size={16} 
-              color="#FFFFFF" 
+              }
+              size={16}
+              color="#FFFFFF"
             />
             <Text style={styles.statusBadgeText}>
               {item.matches ? 'Correto' : item.difference > 0 ? 'Erro' : 'A menos'}
@@ -165,7 +165,7 @@ export default function HistoryScreen() {
             <Ionicons name="calendar-outline" size={16} color="#666666" />
             <Text style={styles.detailText}>{formatDate(item.date)}</Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Ionicons name="receipt-outline" size={16} color="#666666" />
             <Text style={styles.detailText}>Total: {formatCurrency(item.calculatedTotal)}</Text>
@@ -243,10 +243,10 @@ export default function HistoryScreen() {
         <Pressable
           style={[styles.filterButton, selectedFilter === 'correct' && styles.filterButtonActive]}
           onPress={() => handleFilterChange('correct')}>
-          <Ionicons 
-            name="checkmark-circle" 
-            size={16} 
-            color={selectedFilter === 'correct' ? '#FFFFFF' : '#4CAF50'} 
+          <Ionicons
+            name="checkmark-circle"
+            size={16}
+            color={selectedFilter === 'correct' ? '#FFFFFF' : '#4CAF50'}
           />
           <Text style={[styles.filterButtonText, selectedFilter === 'correct' && styles.filterButtonTextActive]}>
             Corretos ({comparisons.filter(c => c.matches || c.difference < 0).length})
@@ -256,10 +256,10 @@ export default function HistoryScreen() {
         <Pressable
           style={[styles.filterButton, selectedFilter === 'errors' && styles.filterButtonActive]}
           onPress={() => handleFilterChange('errors')}>
-          <Ionicons 
-            name="close-circle" 
-            size={16} 
-            color={selectedFilter === 'errors' ? '#FFFFFF' : '#F44336'} 
+          <Ionicons
+            name="close-circle"
+            size={16}
+            color={selectedFilter === 'errors' ? '#FFFFFF' : '#F44336'}
           />
           <Text style={[styles.filterButtonText, selectedFilter === 'errors' && styles.filterButtonTextActive]}>
             Erros ({comparisons.filter(c => !c.matches && c.difference > 0).length})
@@ -327,29 +327,29 @@ export default function HistoryScreen() {
                   <View style={styles.modalRow}>
                     <Text style={styles.modalLabel}>Status:</Text>
                     <View style={[
-                      styles.statusBadge, 
-                      selectedComparison.matches 
-                        ? styles.statusBadgeSuccess 
-                        : selectedComparison.difference > 0 
-                          ? styles.statusBadgeError 
+                      styles.statusBadge,
+                      selectedComparison.matches
+                        ? styles.statusBadgeSuccess
+                        : selectedComparison.difference > 0
+                          ? styles.statusBadgeError
                           : styles.statusBadgeInfo
                     ]}>
-                      <Ionicons 
+                      <Ionicons
                         name={
-                          selectedComparison.matches 
-                            ? "checkmark-circle" 
-                            : selectedComparison.difference > 0 
-                              ? "close-circle" 
+                          selectedComparison.matches
+                            ? "checkmark-circle"
+                            : selectedComparison.difference > 0
+                              ? "close-circle"
                               : "information-circle"
-                        } 
-                        size={16} 
-                        color="#FFFFFF" 
+                        }
+                        size={16}
+                        color="#FFFFFF"
                       />
                       <Text style={styles.statusBadgeText}>
-                        {selectedComparison.matches 
-                          ? 'Correto' 
-                          : selectedComparison.difference > 0 
-                            ? 'Erro Detectado' 
+                        {selectedComparison.matches
+                          ? 'Correto'
+                          : selectedComparison.difference > 0
+                            ? 'Erro Detectado'
                             : 'Cobraram a menos'}
                       </Text>
                     </View>
@@ -368,8 +368,8 @@ export default function HistoryScreen() {
                         styles.modalNote,
                         selectedComparison.difference > 0 ? { color: '#F44336' } : { color: '#2196F3' }
                       ]}>
-                        {selectedComparison.difference > 0 
-                          ? '⚠️ Foi cobrado a mais do que o esperado' 
+                        {selectedComparison.difference > 0
+                          ? '⚠️ Foi cobrado a mais do que o esperado'
                           : 'ℹ️ Foi cobrado a menos do que o esperado'}
                       </Text>
                     </>
@@ -424,7 +424,7 @@ export default function HistoryScreen() {
           setSelectedPhotoIndex(null);
           setDetailsModalVisible(true);
         }}>
-        <Pressable 
+        <Pressable
           style={styles.photoModalOverlay}
           onPress={() => {
             setSelectedPhotoIndex(null);
