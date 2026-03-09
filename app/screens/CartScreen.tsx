@@ -1,11 +1,15 @@
 import { PremiumBlockModal } from '@/components/PremiumBlockModal';
-import PriceVoiceInput from '@/components/ui/PriceVoiceInput';
+import { extractPrice } from '@/components/ui/PriceVoiceInput';
 import { usePremiumGuard } from '@/hooks/usePremiumGuard';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,6 +53,13 @@ export default function CartScreen() {
   const [pricingItemId, setPricingItemId] = useState<string | null>(null);
   const [inlinePrice, setInlinePrice] = useState('');
   const QUICK_PRICES = [100, 200, 300, 500, 1000, 1500, 2000, 2500, 3000, 5000];
+
+  // Adição rápida inline
+  const [newItemDraft, setNewItemDraft] = useState<{ name: string; price: string } | null>(null);
+  const [draftFocusedField, setDraftFocusedField] = useState<'name' | 'price'>('name');
+  const [draftListening, setDraftListening] = useState(false);
+  // Preço inline mic
+  const [inlinePriceMic, setInlinePriceMic] = useState(false);
 
   // Funções auxiliares (devem estar antes dos hooks que as usam)
   const loadCart = async (id: string) => {
@@ -100,6 +111,26 @@ export default function CartScreen() {
   useEffect(() => {
     calculateTotal();
   }, [items]);
+
+  // Microfone único — escreve no campo em foco (igual ao AddProductScreen, sem guard)
+  useSpeechRecognitionEvent('result', (event) => {
+    const transcript = event.results?.[0]?.transcript ?? '';
+    if (!transcript) return;
+    if (inlinePriceMic) {
+      // Está a ouvir para o painel de preço inline de item existente
+      setInlinePrice(extractPrice(transcript));
+    } else {
+      // Está a ouvir para o rascunho rápido
+      setNewItemDraft(prev => {
+        if (!prev) return prev;
+        return draftFocusedField === 'name'
+          ? { ...prev, name: transcript }
+          : { ...prev, price: extractPrice(transcript) };
+      });
+    }
+  });
+  useSpeechRecognitionEvent('end', () => { setDraftListening(false); setInlinePriceMic(false); });
+  useSpeechRecognitionEvent('error', () => { setDraftListening(false); setInlinePriceMic(false); });
 
   // 🛡️ Verificação de acesso Premium - RENDERIZAÇÃO CONDICIONAL
   if (premiumLoading) {
@@ -258,6 +289,119 @@ export default function CartScreen() {
     }
   };
 
+  const handleQuickAdd = () => {
+    if (!cartId) {
+      Alert.alert('Atenção', 'Por favor, informe o nome do supermercado primeiro.');
+      setShowSupermarketModal(true);
+      return;
+    }
+    setPricingItemId(null);
+    setNewItemDraft({ name: '', price: '' });
+    setDraftFocusedField('name');
+  };
+
+  const startDraftListening = async () => {
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) return;
+    setDraftListening(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'pt-PT', interimResults: false, maxAlternatives: 1 });
+  };
+
+  const stopDraftListening = () => {
+    ExpoSpeechRecognitionModule.stop();
+    setDraftListening(false);
+  };
+
+  const startInlinePriceMic = async () => {
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) return;
+    setInlinePriceMic(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'pt-PT', interimResults: false, maxAlternatives: 1 });
+  };
+
+  const stopInlinePriceMic = () => {
+    ExpoSpeechRecognitionModule.stop();
+    setInlinePriceMic(false);
+  };
+
+  const handleConfirmNewItem = async () => {
+    if (!newItemDraft?.name.trim()) {
+      Alert.alert('Atenção', 'O nome do produto não pode estar vazio.');
+      return;
+    }
+    const parsed = parseFloat(newItemDraft.price.replace(',', '.'));
+    const newProduct: CartItem = {
+      id: Date.now().toString(),
+      name: newItemDraft.name.trim(),
+      price: isNaN(parsed) ? 0 : parsed,
+      quantity: 1,
+    };
+    const updatedItems = [...items, newProduct];
+    setItems(updatedItems);
+    setNewItemDraft(null);
+    if (cartId) {
+      const updatedCart: Cart = {
+        id: cartId,
+        supermarket,
+        date: new Date().toISOString(),
+        items: updatedItems,
+        total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        dailyBudget,
+      };
+      await CartsStorage.updateCart(updatedCart);
+    }
+  };
+
+  const renderDraftCard = () => (
+    <View style={styles.draftCard}>
+      <View style={styles.draftCardHeader}>
+        <Text style={styles.draftCardTitle}>⚡ Produto Rápido</Text>
+        <Pressable onPress={() => setNewItemDraft(null)} style={styles.draftCancelX}>
+          <Ionicons name="close" size={20} color="#888" />
+        </Pressable>
+      </View>
+      <TextInput
+        style={[styles.draftInput, draftFocusedField === 'name' && styles.draftInputFocused]}
+        placeholder="Nome do produto..."
+        value={newItemDraft?.name ?? ''}
+        onChangeText={text => setNewItemDraft(prev => prev ? { ...prev, name: text } : prev)}
+        onFocus={() => setDraftFocusedField('name')}
+        autoFocus
+        autoCapitalize="words"
+      />
+      <TextInput
+        style={[styles.draftInput, draftFocusedField === 'price' && styles.draftInputFocused]}
+        placeholder="Preço (Kz) — opcional..."
+        value={newItemDraft?.price ?? ''}
+        onChangeText={text => setNewItemDraft(prev => prev ? { ...prev, price: text } : prev)}
+        onFocus={() => setDraftFocusedField('price')}
+        keyboardType="decimal-pad"
+        returnKeyType="done"
+        onSubmitEditing={handleConfirmNewItem}
+      />
+      <View style={styles.draftActions}>
+        <Pressable
+          style={[styles.draftMicBtn, draftListening && styles.draftMicBtnActive]}
+          onPressIn={startDraftListening}
+          onPressOut={stopDraftListening}
+        >
+          {draftListening
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <Ionicons name="mic" size={20} color="#fff" />}
+        </Pressable>
+        <Text style={styles.draftMicHint}>
+          {draftListening
+            ? `A ouvir ${draftFocusedField === 'name' ? 'nome' : 'preço'}...`
+            : `Mic → ${draftFocusedField === 'name' ? 'nome' : 'preço'}`}
+        </Text>
+        <Pressable style={styles.draftConfirmBtn} onPress={handleConfirmNewItem}>
+          <Ionicons name="checkmark" size={18} color="#fff" />
+          <Text style={styles.draftConfirmText}>Adicionar</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
   };
@@ -314,15 +458,26 @@ export default function CartScreen() {
             <View style={styles.inlinePricePanel}>
             {/* Input + botões */}
             <View style={styles.inlinePriceInputRow}>
-              <PriceVoiceInput
+              <TextInput
+                style={styles.inlinePriceInput}
                 value={inlinePrice}
-                onChange={setInlinePrice}
+                onChangeText={setInlinePrice}
                 placeholder="Inserir preço (Kz)..."
-                inputStyle={styles.inlinePriceInput}
-                style={{ flex: 1 }}
+                placeholderTextColor="#BDBDBD"
+                keyboardType="decimal-pad"
+                returnKeyType="done"
                 autoFocus
                 onSubmitEditing={handleConfirmInlinePrice}
               />
+              <Pressable
+                style={[styles.draftMicBtn, inlinePriceMic && styles.draftMicBtnActive]}
+                onPressIn={startInlinePriceMic}
+                onPressOut={stopInlinePriceMic}
+              >
+                {inlinePriceMic
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Ionicons name="mic" size={18} color="#fff" />}
+              </Pressable>
               <Pressable style={styles.inlineConfirmBtn} onPress={handleConfirmInlinePrice}>
                 <Ionicons name="checkmark" size={22} color="#FFFFFF" />
               </Pressable>
@@ -373,6 +528,9 @@ export default function CartScreen() {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.headerTitle}>{supermarket || 'Novo Carrinho'}</Text>
+        <Pressable onPress={handleQuickAdd} style={styles.quickAddBtn}>
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </Pressable>
       </View>
 
       {/* Supermarket Banner */}
@@ -398,6 +556,7 @@ export default function CartScreen() {
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={newItemDraft ? renderDraftCard() : null}
       />
 
       {/* Footer with Total and Add Button */}
@@ -1148,5 +1307,84 @@ const styles = StyleSheet.create({
     color: '#E65100',
     fontWeight: '600',
     flex: 1,
+  },
+  quickAddBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    gap: 10,
+  },
+  draftCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  draftCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2196F3',
+  },
+  draftCancelX: {
+    padding: 4,
+  },
+  draftInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+  },
+  draftInputFocused: {
+    borderColor: '#2196F3',
+    backgroundColor: '#E3F2FD',
+  },
+  draftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  draftMicBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FF9800',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftMicBtnActive: {
+    backgroundColor: '#E65100',
+  },
+  draftMicHint: {
+    flex: 1,
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  draftConfirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  draftConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
