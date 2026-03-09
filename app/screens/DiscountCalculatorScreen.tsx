@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
 } from 'react-native';
 
 type PromotionType = 'percentage' | 'buyXPayY' | 'buyXGetDiscount' | 'fixedPrice';
@@ -459,8 +459,8 @@ export default function DiscountCalculatorScreen() {
             {result.realDiscount >= 25
               ? 'Vale muito a pena! Aproveite!'
               : result.realDiscount >= 10
-              ? 'Desconto moderado. Compare com outros.'
-              : 'Desconto pequeno. Procure outras opções.'}
+                ? 'Desconto moderado. Compare com outros.'
+                : 'Desconto pequeno. Procure outras opções.'}
           </Text>
         </View>
       </View>

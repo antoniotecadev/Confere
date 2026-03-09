@@ -1,4 +1,5 @@
 import { PremiumBlockModal } from '@/components/PremiumBlockModal';
+import PriceVoiceInput from '@/components/ui/PriceVoiceInput';
 import { usePremiumGuard } from '@/hooks/usePremiumGuard';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
@@ -310,18 +311,16 @@ export default function CartScreen() {
 
         {/* ── Painel inline de definição de preço ── */}
         {isPricing && (
-          <View style={styles.inlinePricePanel}>
+            <View style={styles.inlinePricePanel}>
             {/* Input + botões */}
             <View style={styles.inlinePriceInputRow}>
-              <TextInput
-                style={styles.inlinePriceInput}
+              <PriceVoiceInput
                 value={inlinePrice}
-                onChangeText={setInlinePrice}
+                onChange={setInlinePrice}
                 placeholder="Inserir preço (Kz)..."
-                placeholderTextColor="#BDBDBD"
-                keyboardType="decimal-pad"
+                inputStyle={styles.inlinePriceInput}
+                style={{ flex: 1 }}
                 autoFocus
-                returnKeyType="done"
                 onSubmitEditing={handleConfirmInlinePrice}
               />
               <Pressable style={styles.inlineConfirmBtn} onPress={handleConfirmInlinePrice}>

@@ -1,3 +1,4 @@
+import PriceVoiceInput from '@/components/ui/PriceVoiceInput';
 import { useAudioFeedback } from '@/context/AudioFeedbackProvider';
 import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
@@ -731,13 +732,12 @@ export default function AddProductScreen() {
 
             {/* Price */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Preço unitário (Kz)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Deixar em branco para definir na loja..."
+              <PriceVoiceInput
+                label="Preço unitário (Kz)"
                 value={price}
-                onChangeText={setPrice}
-                keyboardType="decimal-pad"
+                onChange={setPrice}
+                placeholder="Deixar em branco para definir na loja..."
+                inputStyle={styles.input}
               />
             </View>
 
