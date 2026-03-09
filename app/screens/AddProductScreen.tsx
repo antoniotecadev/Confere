@@ -4,6 +4,7 @@ import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
 import { PriceComparisonService } from '@/services/PriceComparisonService';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
+import { parsePrice } from '@/utils/price';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
@@ -180,7 +181,7 @@ export default function AddProductScreen() {
   const handleSelectPrePrice = (value: number) => {
     if (isSumMode) {
       // Modo somatório: adiciona ao valor existente
-      const currentPrice = parseFloat(price) || 0;
+      const currentPrice = parsePrice(price);
       const newPrice = currentPrice + value;
       setPrice(newPrice.toString());
     } else {
@@ -291,7 +292,7 @@ export default function AddProductScreen() {
 
     // Preço é opcional — se preenchido, deve ser válido e > 0
     if (price.trim()) {
-      const priceValue = parseFloat(price);
+      const priceValue = parsePrice(price);
       if (isNaN(priceValue) || priceValue <= 0) {
         Alert.alert('Atenção', 'Por favor, informe um preço válido maior que zero (ou deixa em branco para definir depois).');
         return false;
@@ -310,7 +311,7 @@ export default function AddProductScreen() {
   const handleSaveProduct = async (andExit = false) => {
     if (!validateForm()) return;
 
-    const priceValue = price.trim() ? parseFloat(price) : 0;
+    const priceValue = price.trim() ? parsePrice(price) : 0;
     const quantityValue = parseInt(quantity);
     const productTotal = priceValue * quantityValue;
 
@@ -561,7 +562,7 @@ export default function AddProductScreen() {
         return;
       }
 
-      const productPrice = price.trim() ? parseFloat(price) : 0;
+      const productPrice = price.trim() ? parsePrice(price) : 0;
       const productQty = parseInt(quantity);
 
       // Criar novo produto
@@ -855,11 +856,11 @@ export default function AddProductScreen() {
             </View>
 
             {/* Total Preview */}
-            {price && quantity && parseFloat(price) > 0 && parseInt(quantity) > 0 && (
+            {price && quantity && parsePrice(price) > 0 && parseInt(quantity) > 0 && (
               <View style={styles.totalPreview}>
                 <Text style={styles.totalPreviewLabel}>Subtotal:</Text>
                 <Text style={styles.totalPreviewValue}>
-                  {(parseFloat(price) * parseInt(quantity)).toLocaleString('pt-AO', {
+                  {(parsePrice(price) * parseInt(quantity)).toLocaleString('pt-AO', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}{' '}

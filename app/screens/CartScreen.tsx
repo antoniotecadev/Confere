@@ -2,6 +2,7 @@ import { PremiumBlockModal } from '@/components/PremiumBlockModal';
 import { extractPrice } from '@/components/ui/PriceVoiceInput';
 import { usePremiumGuard } from '@/hooks/usePremiumGuard';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
+import { parsePrice } from '@/utils/price';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -265,7 +266,7 @@ export default function CartScreen() {
   // Confirma o preço definido inline directamente no card do produto
   const handleConfirmInlinePrice = async () => {
     if (!pricingItemId) return;
-    const val = parseFloat(inlinePrice.replace(',', '.'));
+    const val = parsePrice(inlinePrice);
     if (isNaN(val) || val <= 0) {
       Alert.alert('Preço inválido', 'Insere um preço maior que zero.');
       return;
@@ -329,11 +330,11 @@ export default function CartScreen() {
       Alert.alert('Atenção', 'O nome do produto não pode estar vazio.');
       return;
     }
-    const parsed = parseFloat(newItemDraft.price.replace(',', '.'));
+    const parsed = parsePrice(newItemDraft.price);
     const newProduct: CartItem = {
       id: Date.now().toString(),
       name: newItemDraft.name.trim(),
-      price: isNaN(parsed) ? 0 : parsed,
+      price: parsed,
       quantity: 1,
     };
     const updatedItems = [...items, newProduct];
