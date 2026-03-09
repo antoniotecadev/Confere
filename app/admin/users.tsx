@@ -31,26 +31,26 @@ import {
 import { useAdmin } from './_layout';
 
 const PLAN_OPTIONS = [
-  { label: '30 Dias',  days: 30,  price: '1.500 Kz' },
-  { label: '3 Meses',  days: 90,  price: '3.900 Kz' },
-  { label: '6 Meses',  days: 180, price: '7.500 Kz' },
-  { label: '1 Ano',    days: 365, price: '12.000 Kz' },
+  { label: '30 Dias', days: 30, price: '1.500 Kz' },
+  { label: '3 Meses', days: 90, price: '3.900 Kz' },
+  { label: '6 Meses', days: 180, price: '7.500 Kz' },
+  { label: '1 Ano', days: 365, price: '12.000 Kz' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AdminUsersScreen() {
   const { adminUser } = useAdmin();
 
-  const [searchId, setSearchId]       = useState('');
+  const [searchId, setSearchId] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [userData, setUserData]       = useState<AdminUserData | null>(null);
-  const [payments, setPayments]       = useState<AdminUserPayment[]>([]);
-  const [notFound, setNotFound]       = useState(false);
+  const [userData, setUserData] = useState<AdminUserData | null>(null);
+  const [payments, setPayments] = useState<AdminUserPayment[]>([]);
+  const [notFound, setNotFound] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Modal de activação / alteração de plano
-  const [planModal, setPlanModal]         = useState(false);
-  const [selectedDays, setSelectedDays]   = useState(30);
+  const [planModal, setPlanModal] = useState(false);
+  const [selectedDays, setSelectedDays] = useState(30);
 
   // ── Pesquisar utilizador ──────────────────────────────────────────────────
   const handleSearch = async () => {
@@ -81,6 +81,13 @@ export default function AdminUsersScreen() {
 
   // ── Activar/Estender Premium via modal ────────────────────────────────────
   const handleActivatePlan = () => {
+    
+    const status = payments[0]?.status;
+    if (status === 'rejected' || status === 'pending' || status === 'expired' || status === null) {
+      Alert.alert('Erro', 'Não é possível activar Premium para este utilizador, pois o pagamento está: ' + status);
+      return;
+    }
+
     const plan = PLAN_OPTIONS.find(p => p.days === selectedDays)!;
     const action = userData?.isPremium ? 'Estender Premium' : 'Activar Premium';
 
@@ -103,7 +110,7 @@ export default function AdminUsersScreen() {
               searchId.trim(),
               selectedDays,
               adminUser?.email ?? 'unknown',
-              adminUser?.uid   ?? 'unknown'
+              adminUser?.uid ?? 'unknown'
             );
 
             setIsProcessing(false);
@@ -135,7 +142,7 @@ export default function AdminUsersScreen() {
             const result = await AdminUsersService.deactivatePremium(
               searchId.trim(),
               adminUser?.email ?? 'unknown',
-              adminUser?.uid   ?? 'unknown'
+              adminUser?.uid ?? 'unknown'
             );
             setIsProcessing(false);
 
@@ -162,8 +169,8 @@ export default function AdminUsersScreen() {
 
     const date = item.createdAt
       ? new Date(item.createdAt).toLocaleString('pt-AO', {
-          day: '2-digit', month: 'short', year: 'numeric',
-        })
+        day: '2-digit', month: 'short', year: 'numeric',
+      })
       : '—';
 
     return (
@@ -448,7 +455,7 @@ export default function AdminUsersScreen() {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F0F2F5' },
-  content:   { padding: 16, paddingBottom: 40, gap: 16 },
+  content: { padding: 16, paddingBottom: 40, gap: 16 },
 
   // Pesquisa
   searchCard: {
@@ -462,7 +469,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   searchLabel: { fontSize: 12, fontWeight: '600', color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  searchRow:   { flexDirection: 'row', gap: 8 },
+  searchRow: { flexDirection: 'row', gap: 8 },
   searchInput: {
     flex: 1,
     borderWidth: 1.5,
@@ -493,7 +500,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   notFoundText: { fontSize: 16, fontWeight: 'bold', color: '#C62828' },
-  notFoundSub:  { fontSize: 13, color: '#EF9A9A' },
+  notFoundSub: { fontSize: 13, color: '#EF9A9A' },
 
   // Card do utilizador
   userCard: {
@@ -524,7 +531,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   userCardInfo: { flex: 1, gap: 6 },
-  userIdText:   { fontSize: 11, color: '#666', fontFamily: 'monospace' },
+  userIdText: { fontSize: 11, color: '#666', fontFamily: 'monospace' },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -573,8 +580,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#2E7D32',
   },
-  extendBtn:        { backgroundColor: '#1565C0' },
-  activateBtnText:  { color: '#FFF', fontWeight: '700', fontSize: 14 },
+  extendBtn: { backgroundColor: '#1565C0' },
+  activateBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
 
   // Pagamentos
   paymentsSection: {
@@ -682,7 +689,7 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 4 },
-  modalSub:   { fontSize: 13, color: '#888', marginBottom: 16 },
+  modalSub: { fontSize: 13, color: '#888', marginBottom: 16 },
 
   planOption: {
     flexDirection: 'row',
@@ -706,7 +713,7 @@ const styles = StyleSheet.create({
     width: 10, height: 10, borderRadius: 5,
     backgroundColor: '#1565C0',
   },
-  planOptionText:  { flex: 1 },
+  planOptionText: { flex: 1 },
   planOptionLabel: { fontSize: 15, fontWeight: '600', color: '#333' },
   planOptionPrice: { fontSize: 12, color: '#888', marginTop: 2 },
 
@@ -718,7 +725,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
   },
-  modalCancelText:  { color: '#666', fontWeight: '600', fontSize: 14 },
+  modalCancelText: { color: '#666', fontWeight: '600', fontSize: 14 },
   modalConfirm: {
     flex: 2,
     flexDirection: 'row',

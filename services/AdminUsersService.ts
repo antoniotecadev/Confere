@@ -26,7 +26,7 @@ export interface AdminUserPayment {
   amount: number;
   durationDays: number;
   receiptUri?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   createdAt: number;
   reviewedAt?: number;
   reviewedBy?: string;
