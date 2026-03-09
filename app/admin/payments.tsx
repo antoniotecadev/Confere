@@ -9,6 +9,7 @@
  * - Badge com contagem de pendentes
  */
 
+import useUtils from '@/hooks/useUtils';
 import {
     AdminPayment,
     AdminPaymentsService,
@@ -41,6 +42,7 @@ const SCREEN_W = Dimensions.get('window').width;
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AdminPaymentsScreen() {
     const { adminUser } = useAdmin();
+    const { copyToClipboard } = useUtils();
 
     const [allPayments, setAllPayments] = useState<AdminPayment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +89,7 @@ export default function AdminPaymentsScreen() {
                 const olderPages = prev.filter(p => !page.payments.some(np => np.id === p.id));
                 // Manter itens mais antigos (carregados via loadMore) + nova 1.ª página
                 const freshIds = new Set(page.payments.map(p => p.id));
-                const kept = prev.filter(p => !freshIds.has(p.id) && 
+                const kept = prev.filter(p => !freshIds.has(p.id) &&
                     (page.cursor === null || (p.createdAt ?? 0) < page.cursor));
                 return [...page.payments, ...kept];
             });
@@ -257,6 +259,9 @@ export default function AdminPaymentsScreen() {
                             ? `...${item.userId.slice(-16)}`
                             : item.userId}
                     </Text>
+                    <Pressable onPress={() => copyToClipboard(item.userId, 'ID do Utilizador')}>
+                        <Ionicons name="copy-outline" size={14} color="#666" />
+                    </Pressable>
                 </View>
 
                 {/* Valor e duração */}

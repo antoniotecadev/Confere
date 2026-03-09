@@ -1,8 +1,8 @@
+import useUtils from '@/hooks/useUtils';
 import { PremiumService } from '@/services/PremiumService';
 import { UserService } from '@/services/UserService';
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
-import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -78,6 +78,7 @@ const PACKAGES = [
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { copyToClipboard } = useUtils();
   const [isPremium, setIsPremium] = useState(false);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [userId, setUserId] = useState('');
@@ -278,11 +279,6 @@ export default function PremiumScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const copyToClipboard = async (text: string, label: string) => {
-    await Clipboard.setStringAsync(text);
-    Alert.alert('Copiado!', `${label} copiado para a área de transferência.`);
   };
 
   if (isLoading) {
