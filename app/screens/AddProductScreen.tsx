@@ -1,4 +1,4 @@
-import PriceVoiceInput from '@/components/ui/PriceVoiceInput';
+import { extractPrice } from '@/components/ui/PriceVoiceInput';
 import { useAudioFeedback } from '@/context/AudioFeedbackProvider';
 import { FavoritesService } from '@/services/FavoritesService';
 import { PriceAlertService } from '@/services/PriceAlertService';
@@ -9,6 +9,10 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,6 +53,11 @@ export default function AddProductScreen() {
   const [dailyBudget, setDailyBudget] = useState<number | undefined>(undefined);
   const [supermarketName, setSupermarketName] = useState<string | undefined>(undefined);
   const [isSumMode, setIsSumMode] = useState(false);
+
+  // Microfone único contextual
+  const [focusedField, setFocusedField] = useState<'name' | 'price'>('name');
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   // Estados para OCR
   const cameraRef = useRef<CameraView>(null);
@@ -125,6 +134,19 @@ export default function AddProductScreen() {
       setShowSuggestions(false);
     }
   }, [name]);
+
+  // Microfone único — escreve no campo em foco
+  useSpeechRecognitionEvent('result', (event) => {
+    const transcript = event.results?.[0]?.transcript ?? '';
+    if (!transcript) return;
+    if (focusedField === 'name') {
+      setName(transcript);
+    } else {
+      setPrice(extractPrice(transcript));
+    }
+  });
+  useSpeechRecognitionEvent('end', () => setVoiceListening(false));
+  useSpeechRecognitionEvent('error', () => setVoiceListening(false));
 
   const loadFavorites = async () => {
     const favorites = await FavoritesService.detectFrequentProducts(2);
@@ -243,6 +265,22 @@ export default function AddProductScreen() {
 
   const handleRemovePhoto = () => {
     setImageUri(null);
+  };
+
+  const startVoiceListening = async () => {
+    setVoiceError(null);
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) {
+      setVoiceError('Permissão de microfone negada');
+      return;
+    }
+    setVoiceListening(true);
+    ExpoSpeechRecognitionModule.start({ lang: 'pt-PT', interimResults: false, maxAlternatives: 1 });
+  };
+
+  const stopVoiceListening = () => {
+    ExpoSpeechRecognitionModule.stop();
+    setVoiceListening(false);
   };
 
   const validateForm = (): boolean => {
@@ -701,7 +739,7 @@ export default function AddProductScreen() {
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
-                onFocus={() => name.length >= 2 && setShowSuggestions(true)}
+                onFocus={() => { setFocusedField('name'); if (name.length >= 2) setShowSuggestions(true); }}
               />
               {showSuggestions && suggestions.length > 0 && (
                 <View style={styles.suggestionsContainer}>
@@ -732,12 +770,14 @@ export default function AddProductScreen() {
 
             {/* Price */}
             <View style={styles.formGroup}>
-              <PriceVoiceInput
-                label="Preço unitário (Kz)"
-                value={price}
-                onChange={setPrice}
+              <Text style={styles.label}>Preço unitário (Kz)</Text>
+              <TextInput
+                style={styles.input}
                 placeholder="Deixar em branco para definir na loja..."
-                inputStyle={styles.input}
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="decimal-pad"
+                onFocus={() => setFocusedField('price')}
               />
             </View>
 
@@ -832,6 +872,19 @@ export default function AddProductScreen() {
 
         {/* Footer with Save Button */}
         <View style={styles.footer}>
+          {/* Microfone único contextual */}
+          <Pressable
+            style={[styles.singleMicBtn, voiceListening && styles.singleMicBtnActive]}
+            onPressIn={startVoiceListening}
+            onPressOut={stopVoiceListening}>
+            <MaterialIcons name="mic" size={20} color="#FFFFFF" />
+            <Text style={styles.singleMicBtnText}>
+              {voiceListening
+                ? `A ouvir ${focusedField === 'name' ? 'nome' : 'preço'}...`
+                : `Ditar ${focusedField === 'name' ? 'nome' : 'preço'}`}
+            </Text>
+          </Pressable>
+          {voiceError ? <Text style={styles.voiceError}>{voiceError}</Text> : null}
           <Pressable
             style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
             onPress={() => handleSaveProduct(false)}
@@ -1375,5 +1428,29 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  singleMicBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FF9800',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  singleMicBtnActive: {
+    backgroundColor: '#E65100',
+  },
+  singleMicBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  voiceError: {
+    fontSize: 12,
+    color: '#F44336',
+    textAlign: 'center',
+    marginBottom: 6,
   },
 });
