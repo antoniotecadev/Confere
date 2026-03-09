@@ -31,6 +31,7 @@ export interface AdminUserPayment {
   reviewedAt?: number;
   reviewedBy?: string;
   rejectReason?: string;
+  deviceInfo: any;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

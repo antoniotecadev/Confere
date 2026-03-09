@@ -9,24 +9,24 @@
  */
 
 import {
-    AdminUserData,
-    AdminUserPayment,
-    AdminUsersService,
+  AdminUserData,
+  AdminUserPayment,
+  AdminUsersService,
 } from '@/services/AdminUsersService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Keyboard,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Keyboard,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { useAdmin } from './_layout';
 
@@ -324,6 +324,49 @@ export default function AdminUsersScreen() {
             )}
           </View>
 
+          {/* Dispositivo do utilizador */}
+          {payments[0]?.deviceInfo && (() => {
+            const d = payments[0].deviceInfo;
+            return (
+              <View style={styles.deviceCard}>
+                <View style={styles.deviceCardHeader}>
+                  <View style={styles.deviceIconCircle}>
+                    <Ionicons name="phone-portrait-outline" size={22} color="#1565C0" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.deviceName}>{d.deviceName ?? '—'}</Text>
+                    <Text style={styles.deviceModel}>{d.model ?? '—'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.deviceGrid}>
+                  <View style={styles.deviceGridItem}>
+                    <Ionicons name="business-outline" size={13} color="#888" />
+                    <Text style={styles.deviceGridLabel}>Marca</Text>
+                    <Text style={styles.deviceGridValue}>{d.brand ?? '—'}</Text>
+                  </View>
+                  <View style={styles.deviceGridItem}>
+                    <Ionicons name="logo-android" size={13} color="#888" />
+                    <Text style={styles.deviceGridLabel}>Sistema</Text>
+                    <Text style={styles.deviceGridValue}>{d.osVersion ?? '—'}</Text>
+                  </View>
+                  <View style={styles.deviceGridItem}>
+                    <Ionicons name="code-slash-outline" size={13} color="#888" />
+                    <Text style={styles.deviceGridLabel}>App</Text>
+                    <Text style={styles.deviceGridValue}>v{d.appVersion ?? '—'}</Text>
+                  </View>
+                </View>
+
+                {d.deviceId ? (
+                  <View style={styles.deviceIdRow}>
+                    <Ionicons name="finger-print-outline" size={13} color="#999" />
+                    <Text style={styles.deviceIdText} numberOfLines={1}>{d.deviceId}</Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })()}
+
           {/* Histórico de pagamentos */}
           {payments.length > 0 && (
             <View style={styles.paymentsSection}>
@@ -568,6 +611,62 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   noPaymentsText: { fontSize: 13, color: '#B0BEC5' },
+
+  // Dispositivo
+  deviceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  deviceCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  deviceIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceName: { fontSize: 15, fontWeight: '700', color: '#222' },
+  deviceModel: { fontSize: 12, color: '#888', marginTop: 2 },
+  deviceGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  deviceGridItem: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    gap: 4,
+  },
+  deviceGridLabel: { fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: 0.4 },
+  deviceGridValue: { fontSize: 12, fontWeight: '700', color: '#333', textAlign: 'center' },
+  deviceIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  deviceIdText: { fontSize: 11, color: '#888', flex: 1, fontFamily: 'monospace' },
 
   // Modal plano
   modalOverlay: {
