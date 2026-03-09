@@ -16,7 +16,7 @@ import {
 } from "react-native";
 
 // Extrai números/preços do texto falado
-function extractPrice(text: string) {
+export function extractPrice(text: string) {
     if (!text) return "";
 
     // Converte palavras numéricas comuns (PT)
