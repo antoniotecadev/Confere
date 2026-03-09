@@ -44,6 +44,11 @@ export default function CartScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
 
+  // Definição de preço inline (sem navegação)
+  const [pricingItemId, setPricingItemId] = useState<string | null>(null);
+  const [inlinePrice, setInlinePrice] = useState('');
+  const QUICK_PRICES = [100, 200, 300, 500, 1000, 1500, 2000, 2500, 3000, 5000];
+
   // Funções auxiliares (devem estar antes dos hooks que as usam)
   const loadCart = async (id: string) => {
     try {
@@ -225,40 +230,133 @@ export default function CartScreen() {
     setImageModalVisible(true);
   };
 
+  // Confirma o preço definido inline directamente no card do produto
+  const handleConfirmInlinePrice = async () => {
+    if (!pricingItemId) return;
+    const val = parseFloat(inlinePrice.replace(',', '.'));
+    if (isNaN(val) || val <= 0) {
+      Alert.alert('Preço inválido', 'Insere um preço maior que zero.');
+      return;
+    }
+    const updatedItems = items.map(item =>
+      item.id === pricingItemId ? { ...item, price: val } : item
+    );
+    setItems(updatedItems);
+    setPricingItemId(null);
+    setInlinePrice('');
+    if (cartId) {
+      const updatedCart: Cart = {
+        id: cartId,
+        supermarket,
+        date: new Date().toISOString(),
+        items: updatedItems,
+        total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        dailyBudget,
+      };
+      await CartsStorage.updateCart(updatedCart);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
   };
 
-  const renderItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.productItem}>
-      {item.imageUri && (
-        <Pressable onPress={() => handleViewImage(item.imageUri!)}>
-          <Image source={{ uri: item.imageUri }} style={styles.productImage} />
-        </Pressable>
-      )}
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productDetails}>
-          {formatCurrency(item.price)} × {item.quantity}
-        </Text>
-      </View>
-      <View style={styles.productActions}>
-        <Text style={styles.productTotal}>{formatCurrency(item.price * item.quantity)}</Text>
-        <View style={styles.actionButtons}>
-          <Pressable
-            style={styles.editButton}
-            onPress={() => handleEditItem(item)}>
-            <Text style={styles.editButtonText}>✎</Text>
-          </Pressable>
-          <Pressable
-            style={styles.deleteButton}
-            onPress={() => handleRemoveItem(item.id)}>
-            <Text style={styles.deleteButtonText}>×</Text>
-          </Pressable>
+  const renderItem = ({ item }: { item: CartItem }) => {
+    const isPricing  = pricingItemId === item.id;
+    const hasNoPrice = item.price === 0;
+
+    return (
+      <View style={[styles.productItem, hasNoPrice && styles.productItemNoPriceCard]}>
+
+        {/* ── Linha principal do card ── */}
+        <View style={styles.productItemRow}>
+          {item.imageUri && (
+            <Pressable onPress={() => handleViewImage(item.imageUri!)}>
+              <Image source={{ uri: item.imageUri }} style={styles.productImage} />
+            </Pressable>
+          )}
+          <View style={styles.productInfo}>
+            <Text style={styles.productName}>{item.name}</Text>
+            {hasNoPrice ? (
+              <Pressable
+                onPress={() => { setPricingItemId(item.id); setInlinePrice(''); }}
+                hitSlop={8}
+              >
+                <View style={styles.noPriceBadge}>
+                  <Ionicons name="pricetag-outline" size={13} color="#E65100" />
+                  <Text style={styles.noPriceBadgeText}>Sem preço · Toca para definir</Text>
+                </View>
+              </Pressable>
+            ) : (
+              <Text style={styles.productDetails}>
+                {formatCurrency(item.price)} × {item.quantity}
+              </Text>
+            )}
+          </View>
+          <View style={styles.productActions}>
+            {!hasNoPrice && (
+              <Text style={styles.productTotal}>{formatCurrency(item.price * item.quantity)}</Text>
+            )}
+            <View style={styles.actionButtons}>
+              <Pressable style={styles.editButton} onPress={() => handleEditItem(item)}>
+                <Text style={styles.editButtonText}>✎</Text>
+              </Pressable>
+              <Pressable style={styles.deleteButton} onPress={() => handleRemoveItem(item.id)}>
+                <Text style={styles.deleteButtonText}>×</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
+
+        {/* ── Painel inline de definição de preço ── */}
+        {isPricing && (
+          <View style={styles.inlinePricePanel}>
+            {/* Input + botões */}
+            <View style={styles.inlinePriceInputRow}>
+              <TextInput
+                style={styles.inlinePriceInput}
+                value={inlinePrice}
+                onChangeText={setInlinePrice}
+                placeholder="Inserir preço (Kz)..."
+                placeholderTextColor="#BDBDBD"
+                keyboardType="decimal-pad"
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleConfirmInlinePrice}
+              />
+              <Pressable style={styles.inlineConfirmBtn} onPress={handleConfirmInlinePrice}>
+                <Ionicons name="checkmark" size={22} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                style={styles.inlineCancelBtn}
+                onPress={() => { setPricingItemId(null); setInlinePrice(''); }}
+              >
+                <Ionicons name="close" size={20} color="#888" />
+              </Pressable>
+            </View>
+
+            {/* Chips de preços rápidos */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickPricesRow}
+              keyboardShouldPersistTaps="always"
+            >
+              {QUICK_PRICES.map(p => (
+                <Pressable
+                  key={p}
+                  style={styles.quickPriceChip}
+                  onPress={() => setInlinePrice(String(p))}
+                >
+                  <Text style={styles.quickPriceText}>{p.toLocaleString('pt-AO')} Kz</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -300,10 +398,24 @@ export default function CartScreen() {
         ]}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       />
 
       {/* Footer with Total and Add Button */}
       <View style={styles.footer}>
+        {/* Aviso de produtos sem preço */}
+        {items.filter(i => i.price === 0).length > 0 && (
+          <View style={styles.pendingPriceBanner}>
+            <Ionicons name="pricetag-outline" size={14} color="#E65100" />
+            <Text style={styles.pendingPriceText}>
+              {items.filter(i => i.price === 0).length}{' '}
+              {items.filter(i => i.price === 0).length === 1
+                ? 'produto sem preço'
+                : 'produtos sem preço'}{' '}
+              · Toca nos produtos para definir
+            </Text>
+          </View>
+        )}
         {/* Daily Budget Progress */}
         {dailyBudget && dailyBudget > 0 && (
           <View style={styles.budgetProgressContainer}>
@@ -625,9 +737,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -945,5 +1054,100 @@ const styles = StyleSheet.create({
   },
   supermarketChipTextSelected: {
     color: '#2196F3',
+  },
+  productItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  productItemNoPriceCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9800',
+  },
+  noPriceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  noPriceBadgeText: {
+    fontSize: 12,
+    color: '#E65100',
+    fontWeight: '600',
+  },
+  inlinePricePanel: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#FFE0B2',
+    gap: 8,
+  },
+  inlinePriceInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  inlinePriceInput: {
+    flex: 1,
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1.5,
+    borderColor: '#FF9800',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  inlineConfirmBtn: {
+    width: 42,
+    height: 42,
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineCancelBtn: {
+    width: 42,
+    height: 42,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickPricesRow: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  quickPriceChip: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  quickPriceText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pendingPriceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  pendingPriceText: {
+    fontSize: 12,
+    color: '#E65100',
+    fontWeight: '600',
+    flex: 1,
   },
 });

@@ -12,7 +12,15 @@ interface AudioFeedbackContextType {
     stopAllSounds: () => void;
 }
 
-const AudioFeedbackContext = createContext<AudioFeedbackContextType | null>(null);
+const noopFeedback: AudioFeedbackContextType = {
+    playFeedbackSound: () => {},
+    playPositiveSound: () => {},
+    playNegativeSound: () => {},
+    playBeepSound: () => {},
+    stopAllSounds: () => {},
+};
+
+const AudioFeedbackContext = createContext<AudioFeedbackContextType>(noopFeedback);
 
 interface AudioFeedbackProviderProps {
     children: ReactNode;
@@ -32,14 +40,19 @@ export function AudioFeedbackProvider({ children }: AudioFeedbackProviderProps) 
 
     const isReleasedRef = useRef(false);
 
-    // Inicializar players apenas uma vez
-    if (!playersRef.current && !isReleasedRef.current) {
-        playersRef.current = {
-            positive: createAudioPlayer(require('@/assets/sounds/positive.mp3')),
-            negative: createAudioPlayer(require('@/assets/sounds/negative.mp3')),
-            beep: createAudioPlayer(require('@/assets/sounds/beep.mp3')),
-        };
-    }
+    // Inicializar players em useEffect para não crashar o render body
+    useEffect(() => {
+        if (playersRef.current || isReleasedRef.current) return;
+        try {
+            playersRef.current = {
+                positive: createAudioPlayer(require('@/assets/sounds/positive.mp3')),
+                negative: createAudioPlayer(require('@/assets/sounds/negative.mp3')),
+                beep: createAudioPlayer(require('@/assets/sounds/beep.mp3')),
+            };
+        } catch (error) {
+            console.warn('AudioFeedbackProvider: falha ao inicializar players:', error);
+        }
+    }, []);
 
     /**
      * Toca um som de feedback e vibra o dispositivo
@@ -147,11 +160,5 @@ export function AudioFeedbackProvider({ children }: AudioFeedbackProviderProps) 
  * playBeepSound();
  */
 export function useAudioFeedback(): AudioFeedbackContextType {
-    const context = useContext(AudioFeedbackContext);
-
-    if (!context) {
-        throw new Error('useAudioFeedback must be used within AudioFeedbackProvider');
-    }
-
-    return context;
+    return useContext(AudioFeedbackContext);
 }

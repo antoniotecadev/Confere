@@ -250,10 +250,13 @@ export default function AddProductScreen() {
       return false;
     }
 
-    const priceValue = parseFloat(price);
-    if (isNaN(priceValue) || priceValue <= 0) {
-      Alert.alert('Atenção', 'Por favor, informe um preço válido maior que zero.');
-      return false;
+    // Preço é opcional — se preenchido, deve ser válido e > 0
+    if (price.trim()) {
+      const priceValue = parseFloat(price);
+      if (isNaN(priceValue) || priceValue <= 0) {
+        Alert.alert('Atenção', 'Por favor, informe um preço válido maior que zero (ou deixa em branco para definir depois).');
+        return false;
+      }
     }
 
     const quantityValue = parseInt(quantity);
@@ -268,9 +271,15 @@ export default function AddProductScreen() {
   const handleSaveProduct = async (andExit = false) => {
     if (!validateForm()) return;
 
-    const priceValue = parseFloat(price);
+    const priceValue = price.trim() ? parseFloat(price) : 0;
     const quantityValue = parseInt(quantity);
     const productTotal = priceValue * quantityValue;
+
+    // Ignorar verificações de orçamento e alerta de preço se preço não foi definido
+    if (priceValue === 0) {
+      saveProduct(andExit);
+      return;
+    }
 
     // Verificar orçamento diário primeiro
     if (dailyBudget && dailyBudget > 0) {
@@ -513,7 +522,7 @@ export default function AddProductScreen() {
         return;
       }
 
-      const productPrice = parseFloat(price);
+      const productPrice = price.trim() ? parseFloat(price) : 0;
       const productQty = parseInt(quantity);
 
       // Criar novo produto
@@ -722,10 +731,10 @@ export default function AddProductScreen() {
 
             {/* Price */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Preço unitário (Kz) *</Text>
+              <Text style={styles.label}>Preço unitário (Kz)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="0.00"
+                placeholder="Deixar em branco para definir na loja..."
                 value={price}
                 onChangeText={setPrice}
                 keyboardType="decimal-pad"
