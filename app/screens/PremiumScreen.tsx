@@ -76,6 +76,22 @@ const PACKAGES = [
 ] as const;
 // ──────────────────────────────────────────────────────────────────────────────
 
+
+const BENEFITS = [
+  { icon: 'close-circle-outline', text: 'Sem anúncios' },
+  { icon: 'infinite-outline', text: 'Comparações e carrinhos ilimitados' },
+  { icon: 'notifications-outline', text: 'Alertas de preço personalizados' },
+  { icon: 'trending-up-outline', text: 'Histórico e tendências de preço' },
+  { icon: 'share-social-outline', text: 'Partilha avançada via WhatsApp' },
+  { icon: 'camera-outline', text: 'Armazenamento ilimitado' },
+  { icon: 'stats-chart-outline', text: 'Estatísticas e gráficos detalhados' },
+  { icon: 'cloud-upload-outline', text: 'Backup local ou na nuvem' },
+  { icon: 'calculator-outline', text: 'Calculadora inteligente' },
+  { icon: 'download-outline', text: 'Exportação de dados' },
+  { icon: 'headset-outline', text: 'Suporte prioritário 24/7' },
+  { icon: 'ellipsis-horizontal-outline', text: 'E muito mais...' }
+];
+
 export default function PremiumScreen() {
   const router = useRouter();
   const { copyToClipboard } = useUtils();
@@ -91,10 +107,10 @@ export default function PremiumScreen() {
   const [selectedPackageId, setSelectedPackageId] = useState<string>('monthly');
 
   // ── Trigger secreto para o admin (7 toques em 4 segundos no ícone) ──────────
-  const secretTapCount  = React.useRef(0);
-  const secretTapTimer  = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const SECRET_TAPS     = 7;
-  const SECRET_WINDOW   = 4000; // ms
+  const secretTapCount = React.useRef(0);
+  const secretTapTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SECRET_TAPS = 7;
+  const SECRET_WINDOW = 4000; // ms
 
   const handleSecretTap = () => {
     secretTapCount.current += 1;
@@ -232,8 +248,8 @@ export default function PremiumScreen() {
 
       // 2. Construir mensagem WhatsApp com detalhes do pagamento
       const planLabel = selectedPackage.label;
-      const amount    = selectedPackage.price.toLocaleString('pt-AO');
-      const dateStr   = new Date().toLocaleDateString('pt-AO');
+      const amount = selectedPackage.price.toLocaleString('pt-AO');
+      const dateStr = new Date().toLocaleDateString('pt-AO');
       const waMessage =
         `*Comprovativo de Pagamento — Confere* 🛒\n\n` +
         `💎 Plano: ${planLabel}\n` +
@@ -262,7 +278,7 @@ export default function PremiumScreen() {
       if (sharingAvailable) {
         await new Promise(res => setTimeout(res, whatsappOpened ? 1200 : 0));
         await Sharing.shareAsync(receiptUri, {
-          mimeType:    'image/jpeg',
+          mimeType: 'image/jpeg',
           dialogTitle: 'Enviar comprovativo ao Confere',
         });
       }
@@ -274,6 +290,7 @@ export default function PremiumScreen() {
           : 'Pagamento registado!\n\nPartilha a imagem do comprovativo via WhatsApp com o nosso suporte.\n\nVamos validar em até 24 horas.',
         [{ text: 'OK', onPress: () => null }]
       );
+      setReceiptUri(null);
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro ao enviar o pagamento.');
     } finally {
@@ -370,19 +387,7 @@ export default function PremiumScreen() {
 
         <View style={styles.benefitsContainer}>
           <Text style={styles.sectionTitle}>Seus Benefícios:</Text>
-          {[
-            { icon: 'close-circle-outline', text: 'Sem anúncios' },
-            { icon: 'infinite-outline', text: 'Comparações e carrinhos ilimitados' },
-            { icon: 'notifications-outline', text: 'Alertas de preço personalizados' },
-            { icon: 'trending-up-outline', text: 'Histórico e tendências de preço' },
-            { icon: 'share-social-outline', text: 'Partilha avançada via WhatsApp' },
-            { icon: 'camera-outline', text: 'Armazenamento ilimitado de fotos' },
-            { icon: 'stats-chart-outline', text: 'Estatísticas e gráficos detalhados' },
-            { icon: 'cloud-upload-outline', text: 'Backup automático na nuvem' },
-            { icon: 'calculator-outline', text: 'Calculadora de descontos avançada' },
-            { icon: 'download-outline', text: 'Exportação de dados (Excel/PDF)' },
-            { icon: 'headset-outline', text: 'Suporte prioritário 24/7' },
-          ].map((benefit, index) => (
+          {BENEFITS.map((benefit, index) => (
             <View key={index} style={styles.benefitRow}>
               <Ionicons name={benefit.icon as any} size={20} color="#4CAF50" style={styles.benefitIcon} />
               <Text style={styles.benefitItem}>{benefit.text}</Text>
@@ -471,20 +476,7 @@ export default function PremiumScreen() {
 
       <View style={styles.benefitsContainer}>
         <Text style={styles.sectionTitle}>O que você ganha:</Text>
-        {[
-          { icon: 'close-circle-outline', text: 'Sem anúncios' },
-          { icon: 'infinite-outline', text: 'Comparações e carrinhos ilimitados' },
-          { icon: 'notifications-outline', text: 'Alertas de preço personalizados' },
-          { icon: 'trending-up-outline', text: 'Histórico e tendências de preço' },
-          { icon: 'share-social-outline', text: 'Partilha avançada via WhatsApp' },
-          { icon: 'camera-outline', text: 'Armazenamento ilimitado de fotos' },
-          { icon: 'stats-chart-outline', text: 'Estatísticas e gráficos detalhados' },
-          { icon: 'cloud-upload-outline', text: 'Backup automático na nuvem' },
-          { icon: 'calculator-outline', text: 'Calculadora de descontos avançada' },
-          { icon: 'ellipsis-horizontal-outline', text: 'E muito mais...' }
-          // { icon: 'download-outline', text: 'Exportação de dados (Excel/PDF)' },
-          // { icon: 'headset-outline', text: 'Suporte prioritário 24/7' },
-        ].map((benefit, index) => (
+        {BENEFITS.map((benefit, index) => (
           <View key={index} style={styles.benefitRow}>
             <Ionicons name={benefit.icon as any} size={20} color="#4CAF50" style={styles.benefitIcon} />
             <Text style={styles.benefitItem}>{benefit.text}</Text>
