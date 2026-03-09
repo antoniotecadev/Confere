@@ -12,6 +12,7 @@
 import {
     AdminPayment,
     AdminPaymentsService,
+    PaymentsPage,
 } from '@/services/AdminPaymentsService';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -44,6 +45,9 @@ export default function AdminPaymentsScreen() {
     const [allPayments, setAllPayments] = useState<AdminPayment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [cursor, setCursor] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<FilterTab>('pending');
     const [loadError, setLoadError] = useState(false);
 
@@ -76,9 +80,23 @@ export default function AdminPaymentsScreen() {
             }
         }, 10_000);
 
-        unsubscribeRef.current = AdminPaymentsService.subscribeToPayments((payments) => {
+        unsubscribeRef.current = AdminPaymentsService.subscribeToFirstPage((page: PaymentsPage) => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            setAllPayments(payments);
+            // Actualiza apenas a 1.ª página (em tempo real); páginas seguintes mantidas
+            setAllPayments(prev => {
+                const olderPages = prev.filter(p => !page.payments.some(np => np.id === p.id));
+                // Manter itens mais antigos (carregados via loadMore) + nova 1.ª página
+                const freshIds = new Set(page.payments.map(p => p.id));
+                const kept = prev.filter(p => !freshIds.has(p.id) && 
+                    (page.cursor === null || (p.createdAt ?? 0) < page.cursor));
+                return [...page.payments, ...kept];
+            });
+            setHasMore(page.hasMore);
+            setCursor(prev => {
+                // Só actualizar cursor se ainda não tivermos páginas extras carregadas
+                // (para não perder o cursor das páginas seguintes)
+                return page.cursor;
+            });
             setIsLoading(false);
             setIsRefreshing(false);
         });
@@ -92,8 +110,26 @@ export default function AdminPaymentsScreen() {
         };
     }, []);
 
+    // ── Carregar página seguinte ──────────────────────────────────────────────
+    const loadMore = async () => {
+        if (!hasMore || isLoadingMore || cursor === null) return;
+        setIsLoadingMore(true);
+        const page = await AdminPaymentsService.loadNextPage(cursor);
+        setAllPayments(prev => [
+            ...prev,
+            // Evitar duplicados por race-condition com a subscrição em tempo real
+            ...page.payments.filter(np => !prev.some(p => p.id === np.id)),
+        ]);
+        setHasMore(page.hasMore);
+        if (page.cursor !== null) setCursor(page.cursor);
+        setIsLoadingMore(false);
+    };
+
     const onRefresh = () => {
         setIsRefreshing(true);
+        setAllPayments([]);
+        setHasMore(false);
+        setCursor(null);
         subscribeRealtime();
     };
 
@@ -332,8 +368,10 @@ export default function AdminPaymentsScreen() {
             {/* Summary bar */}
             <View style={styles.summaryBar}>
                 <View style={styles.summaryItem}>
-                    <Text style={styles.summaryNum}>{allPayments.length}</Text>
-                    <Text style={styles.summaryLabel}>Total</Text>
+                    <Text style={styles.summaryNum}>
+                        {allPayments.length}{hasMore ? '+' : ''}
+                    </Text>
+                    <Text style={styles.summaryLabel}>Carregados</Text>
                 </View>
                 <View style={[styles.summaryItem, styles.summaryItemHL]}>
                     <Text style={[styles.summaryNum, { color: '#E65100' }]}>{pendingCount}</Text>
@@ -389,6 +427,30 @@ export default function AdminPaymentsScreen() {
                 contentContainerStyle={styles.listContent}
                 refreshControl={
                     <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#1A237E']} />
+                }
+                ListFooterComponent={
+                    hasMore ? (
+                        <Pressable
+                            style={styles.loadMoreBtn}
+                            onPress={loadMore}
+                            disabled={isLoadingMore}
+                        >
+                            {isLoadingMore ? (
+                                <ActivityIndicator size="small" color="#1A237E" />
+                            ) : (
+                                <>
+                                    <Ionicons name="chevron-down-outline" size={16} color="#1A237E" />
+                                    <Text style={styles.loadMoreText}>Carregar Mais</Text>
+                                </>
+                            )}
+                        </Pressable>
+                    ) : (
+                        allPayments.length > 0 ? (
+                            <Text style={styles.allLoadedText}>
+                                ✔ Todos os {allPayments.length} pagamentos carregados
+                            </Text>
+                        ) : null
+                    )
                 }
                 ListEmptyComponent={
                     <View style={styles.empty}>
@@ -677,6 +739,28 @@ const styles = StyleSheet.create({
     },
     emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#90A4AE' },
     emptySubtitle: { fontSize: 13, color: '#B0BEC5', textAlign: 'center', paddingHorizontal: 32 },
+
+    // Carregar mais
+    loadMoreBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginVertical: 16,
+        marginHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#1A237E',
+        backgroundColor: '#FFFFFF',
+    },
+    loadMoreText: { fontSize: 14, fontWeight: '700', color: '#1A237E' },
+    allLoadedText: {
+        textAlign: 'center',
+        fontSize: 12,
+        color: '#B0BEC5',
+        paddingVertical: 16,
+    },
 
     // Modal comprovativo
     receiptModalBg: {

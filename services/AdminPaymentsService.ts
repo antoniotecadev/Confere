@@ -2,15 +2,18 @@
  * 💳 AdminPaymentsService
  *
  * Operações do painel admin sobre pagamentos:
- * - Listar todos os pagamentos (todos os utilizadores)
- * - Aprovar → activa Premium + actualiza payment + audit log
- * - Rejeitar → actualiza payment + marca user rejected + audit log
- * - Ouvir actualizações em tempo real (onValue)
+ * - Paginação cursor-based em payments_index (Firebase RTDB)
+ * - Aprovar → activa Premium + actualiza ambos os nós + audit log
+ * - Rejeitar → actualiza ambos os nós + audit log
+ * - Subscrição em tempo real apenas para a 1.ª página
  */
 
 import { database } from '@/config/firebaseConfig';
 import { AuditLogService } from '@/services/AuditLogService';
-import { get, onValue, ref, serverTimestamp, update } from 'firebase/database';
+import { endBefore, get, limitToLast, onValue, orderByChild, query, ref, serverTimestamp, update } from 'firebase/database';
+
+// Número de pagamentos carregados por página
+const PAGE_SIZE = 20;
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 export interface AdminPayment {
@@ -25,6 +28,7 @@ export interface AdminPayment {
   createdAt: number;
   reviewedAt?: number;
   reviewedBy?: string;
+  rejectReason?: string;
   deviceInfo?: any;
 }
 
@@ -33,92 +37,125 @@ export interface ApproveResult {
   message?: string;
 }
 
+export interface PaymentsPage {
+  payments:  AdminPayment[];
+  hasMore:   boolean;
+  /** createdAt (timestamp) do registo mais antigo na página — usado como cursor para a próxima */
+  cursor:    number | null;
+}
+
 // ─── Serviço ──────────────────────────────────────────────────────────────────
 class AdminPaymentsServiceClass {
 
-  /**
-   * Obtém todos os pagamentos de todos os utilizadores (one-shot).
-   * Ordenados do mais recente para o mais antigo.
-   */
-  async getAllPayments(): Promise<AdminPayment[]> {
-    const paymentsRef = ref(database, 'payments');
-    const snapshot = await get(paymentsRef);
-
-    if (!snapshot.exists()) return [];
-
-    const result: AdminPayment[] = [];
-    const allUsers = snapshot.val() as Record<string, Record<string, any>>;
-
-    for (const userId of Object.keys(allUsers)) {
-      const userPayments = allUsers[userId];
-      for (const paymentId of Object.keys(userPayments)) {
-        const p = userPayments[paymentId];
-        result.push({
-          id:          paymentId,
-          userId,
-          amount:      p.amount      ?? 0,
-          durationDays: p.durationDays ?? 30,
-          receiptUri:  p.receiptUri  ?? '',
-          status:      p.status      ?? 'pending',
-          createdAt:   p.createdAt   ?? 0,
-          reviewedAt:  p.reviewedAt,
-          reviewedBy:  p.reviewedBy,
-          deviceInfo:  p.deviceInfo,
-        });
-      }
-    }
-
-    // Mais recente primeiro
-    return result.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-  }
+  // ─── Paginação (payments_index) ─────────────────────────────────────────────
 
   /**
-   * Subscreve actualizações em tempo real.
-   * Devolve a função de cancelamento (para usar no useEffect cleanup).
+   * Subscreve a 1.ª página em tempo real via payments_index.
+   * Sempre que novos pagamentos chegam, o callback é invocado com os últimos PAGE_SIZE.
+   * Devolve a função de cancelamento.
    */
-  subscribeToPayments(callback: (payments: AdminPayment[]) => void): () => void {
-    const paymentsRef = ref(database, 'payments');
+  subscribeToFirstPage(callback: (page: PaymentsPage) => void): () => void {
+    const indexRef = ref(database, 'payments_index');
+    const q = query(indexRef, orderByChild('createdAt'), limitToLast(PAGE_SIZE + 1));
 
     const unsubscribe = onValue(
-      paymentsRef,
+      q,
       (snapshot) => {
         if (!snapshot.exists()) {
-          callback([]);
+          callback({ payments: [], hasMore: false, cursor: null });
           return;
         }
 
         const result: AdminPayment[] = [];
-        const allUsers = snapshot.val() as Record<string, Record<string, any>>;
+        snapshot.forEach((child) => {
+          const p = child.val();
+          result.push({
+            id:           child.key!,
+            userId:       p.userId       ?? '',
+            amount:       p.amount       ?? 0,
+            durationDays: p.durationDays ?? 30,
+            receiptUri:   p.receiptUri   ?? '',
+            status:       p.status       ?? 'pending',
+            createdAt:    p.createdAt    ?? 0,
+            reviewedAt:   p.reviewedAt,
+            reviewedBy:   p.reviewedBy,
+            rejectReason: p.rejectReason,
+            deviceInfo:   p.deviceInfo,
+          });
+        });
 
-        for (const userId of Object.keys(allUsers)) {
-          const userPayments = allUsers[userId];
-          if (!userPayments || typeof userPayments !== 'object') continue;
-          for (const paymentId of Object.keys(userPayments)) {
-            const p = userPayments[paymentId];
-            result.push({
-              id:           paymentId,
-              userId,
-              amount:       p.amount       ?? 0,
-              durationDays: p.durationDays ?? 30,
-              receiptUri:   p.receiptUri   ?? '',
-              status:       p.status       ?? 'pending',
-              createdAt:    p.createdAt    ?? 0,
-              reviewedAt:   p.reviewedAt,
-              reviewedBy:   p.reviewedBy,
-              deviceInfo:   p.deviceInfo,
-            });
-          }
-        }
+        // Mais recente primeiro
+        result.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
-        callback(result.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)));
+        const hasMore   = result.length > PAGE_SIZE;
+        const payments  = hasMore ? result.slice(0, PAGE_SIZE) : result;
+        const cursor    = payments.length > 0 ? payments[payments.length - 1].createdAt : null;
+
+        callback({ payments, hasMore, cursor });
       },
       (error) => {
         console.error('[AdminPayments] Firebase onValue error:', error);
-        callback([]); // Desbloqueia o loading mesmo em caso de erro
+        callback({ payments: [], hasMore: false, cursor: null });
       }
     );
 
     return unsubscribe;
+  }
+
+  /**
+   * Carrega a próxima página (one-shot) a partir do cursor.
+   * cursor = createdAt do registo mais antigo da página anterior.
+   */
+  async loadNextPage(cursor: number): Promise<PaymentsPage> {
+    try {
+      const indexRef = ref(database, 'payments_index');
+      const q = query(
+        indexRef,
+        orderByChild('createdAt'),
+        endBefore(cursor),
+        limitToLast(PAGE_SIZE + 1)
+      );
+
+      const snapshot = await get(q);
+      if (!snapshot.exists()) return { payments: [], hasMore: false, cursor: null };
+
+      const result: AdminPayment[] = [];
+      snapshot.forEach((child) => {
+        const p = child.val();
+        result.push({
+          id:           child.key!,
+          userId:       p.userId       ?? '',
+          amount:       p.amount       ?? 0,
+          durationDays: p.durationDays ?? 30,
+          receiptUri:   p.receiptUri   ?? '',
+          status:       p.status       ?? 'pending',
+          createdAt:    p.createdAt    ?? 0,
+          reviewedAt:   p.reviewedAt,
+          reviewedBy:   p.reviewedBy,
+          rejectReason: p.rejectReason,
+          deviceInfo:   p.deviceInfo,
+        });
+      });
+
+      result.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+      const hasMore  = result.length > PAGE_SIZE;
+      const payments = hasMore ? result.slice(0, PAGE_SIZE) : result;
+      const newCursor = payments.length > 0 ? payments[payments.length - 1].createdAt : null;
+
+      return { payments, hasMore, cursor: newCursor };
+    } catch (err) {
+      console.error('[AdminPayments] Erro ao carregar mais:', err);
+      return { payments: [], hasMore: false, cursor: null };
+    }
+  }
+
+  /**
+   * Mantido para compatibilidade com o dashboard (subscription global).
+   * Usa payments_index em vez de payments/ (mais leve).
+   */
+  subscribeToPayments(callback: (payments: AdminPayment[]) => void): () => void {
+    return this.subscribeToFirstPage(({ payments }) => callback(payments));
   }
 
   /**
@@ -148,8 +185,14 @@ class AdminPaymentsServiceClass {
       const newExpiresAt = baseTime + durationDays * 24 * 60 * 60 * 1000;
       const expiryLabel = new Date(newExpiresAt).toLocaleDateString('pt-AO');
 
-      // 1. Marcar pagamento como aprovado
+      // 1. Marcar pagamento como aprovado (nó do utilizador + índice plano)
       await update(ref(database, `payments/${userId}/${paymentId}`), {
+        status:     'approved',
+        reviewedAt: serverTimestamp(),
+        reviewedBy: adminEmail,
+      });
+
+      await update(ref(database, `payments_index/${paymentId}`), {
         status:     'approved',
         reviewedAt: serverTimestamp(),
         reviewedBy: adminEmail,
@@ -202,8 +245,15 @@ class AdminPaymentsServiceClass {
     try {
       const { userId, id: paymentId, amount, durationDays } = payment;
 
-      // 1. Marcar pagamento como rejeitado
+      // 1. Marcar pagamento como rejeitado (nó do utilizador + índice plano)
       await update(ref(database, `payments/${userId}/${paymentId}`), {
+        status:       'rejected',
+        reviewedAt:   serverTimestamp(),
+        reviewedBy:   adminEmail,
+        rejectReason: reason || 'Sem motivo especificado',
+      });
+
+      await update(ref(database, `payments_index/${paymentId}`), {
         status:       'rejected',
         reviewedAt:   serverTimestamp(),
         reviewedBy:   adminEmail,

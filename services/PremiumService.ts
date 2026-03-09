@@ -260,6 +260,7 @@ class PremiumServiceClass {
       // Criar pagamento na pasta do usuário (estrutura: payments/userId/paymentId)
       const userPaymentsRef = ref(database, `payments/${userId}`);
       const newPaymentRef = push(userPaymentsRef);
+      const paymentId = newPaymentRef.key!;
 
       const payment = {
         amount,
@@ -271,6 +272,18 @@ class PremiumServiceClass {
       };
 
       await set(newPaymentRef, payment);
+
+      // Índice plano para paginação no painel admin
+      // (Firebase RTDB só permite orderByChild em nós planos)
+      const indexRef = ref(database, `payments_index/${paymentId}`);
+      await set(indexRef, {
+        userId,
+        amount,
+        durationDays,
+        receiptUri,
+        status:    'pending',
+        createdAt: serverTimestamp(),
+      });
 
       return { success: true };
     } catch (error) {
