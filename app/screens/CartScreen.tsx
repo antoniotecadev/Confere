@@ -2,6 +2,7 @@ import { PremiumBlockModal } from '@/components/PremiumBlockModal';
 import { usePremiumGuard } from '@/hooks/usePremiumGuard';
 import { Cart, CartItem, CartsStorage } from '@/utils/carts-storage';
 import { getSupermarketLogo, supermarkets } from '@/utils/supermarkets';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -27,7 +28,7 @@ export default function CartScreen() {
 
   // 🛡️ Premium Guard - Bloqueia acesso se não for Premium
   const { hasAccess, loading: premiumLoading, status, showBlockModal, closeModal: closePremiumModal, expiresAt } = usePremiumGuard();
-  
+
   const closeModal = () => {
     closePremiumModal();
     router.back(); // Volta para a tela anterior
@@ -114,10 +115,10 @@ export default function CartScreen() {
       setShowSupermarketModal(true);
       return;
     }
-    
+
     router.push({
       pathname: '/screens/AddProductScreen',
-      params: { 
+      params: {
         id: cartId,
       },
     } as any);
@@ -148,7 +149,7 @@ export default function CartScreen() {
 
     const updatedItems = items.map(item => (item.id === editingItem.id ? editingItem : item));
     setItems(updatedItems);
-    
+
     // Salvar no AsyncStorage
     if (cartId) {
       const updatedCart: Cart = {
@@ -159,7 +160,7 @@ export default function CartScreen() {
         total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
         dailyBudget,
       };
-      
+
       try {
         await CartsStorage.updateCart(updatedCart);
       } catch (error) {
@@ -167,7 +168,7 @@ export default function CartScreen() {
         Alert.alert('Erro', 'Não foi possível salvar as alterações.');
       }
     }
-    
+
     setEditModalVisible(false);
     setEditingItem(null);
   };
@@ -182,7 +183,7 @@ export default function CartScreen() {
           const itemToRemove = items.find(item => item.id === itemId);
           const updatedItems = items.filter(item => item.id !== itemId);
           setItems(updatedItems);
-          
+
           // Deletar foto física se existir
           if (itemToRemove?.imageUri) {
             try {
@@ -195,7 +196,7 @@ export default function CartScreen() {
               console.warn('Erro ao deletar foto:', error);
             }
           }
-          
+
           // Salvar no AsyncStorage
           if (cartId) {
             const updatedCart: Cart = {
@@ -206,7 +207,7 @@ export default function CartScreen() {
               total: updatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
               dailyBudget,
             };
-            
+
             try {
               await CartsStorage.updateCart(updatedCart);
             } catch (error) {
@@ -272,17 +273,16 @@ export default function CartScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.headerTitle}>{supermarket || 'Novo Carrinho'}</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       {/* Supermarket Banner */}
       {supermarket && (
         <View style={styles.supermarketBanner}>
-          <Image 
-            source={getSupermarketLogo(supermarket)} 
+          <Image
+            source={getSupermarketLogo(supermarket)}
             style={styles.bannerLogo}
             contentFit="contain"
           />
@@ -325,8 +325,8 @@ export default function CartScreen() {
                       total > dailyBudget
                         ? '#f44336'
                         : total >= dailyBudget * 0.8
-                        ? '#FF9800'
-                        : '#4CAF50',
+                          ? '#FF9800'
+                          : '#4CAF50',
                   },
                 ]}
               />
@@ -343,7 +343,7 @@ export default function CartScreen() {
             )}
           </View>
         )}
-        
+
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
@@ -375,21 +375,21 @@ export default function CartScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}>
-          <Pressable 
+          <Pressable
             style={styles.modalOverlay}
             onPress={() => {
               if (supermarket.trim()) {
                 setShowSupermarketModal(false);
               }
             }}>
-            <Pressable 
+            <Pressable
               style={styles.modalContent}
               onPress={(e) => e.stopPropagation()}>
               <Text style={styles.modalTitle}>Novo Carrinho</Text>
-              
+
               <Text style={styles.inputLabel}>Escolha Rápida (opcional)</Text>
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.supermarketsScrollView}
                 contentContainerStyle={styles.supermarketsScrollContent}>
@@ -411,7 +411,7 @@ export default function CartScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
-              
+
               <Text style={styles.inputLabel}>Nome do Supermercado *</Text>
               <TextInput
                 style={styles.modalInput}
@@ -419,7 +419,7 @@ export default function CartScreen() {
                 value={supermarket}
                 onChangeText={setSupermarket}
               />
-              
+
               <Text style={styles.inputLabel}>Orçamento para hoje (opcional)</Text>
               <TextInput
                 style={styles.modalInput}
@@ -434,49 +434,49 @@ export default function CartScreen() {
               <Text style={styles.inputHelper}>
                 💡 Defina quanto quer gastar hoje. Vamos alertar se ultrapassar!
               </Text>
-              
+
               <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowSupermarketModal(false);
-                  router.replace('/screens/HomeScreen');
-                }}>
-                <Text style={styles.modalCancelButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalButton}
-                onPress={async () => {
-                  if (!supermarket.trim()) {
-                    Alert.alert('Atenção', 'Por favor, informe o nome do supermercado.');
-                    return;
-                  }
-                  
-                  // Criar e salvar o carrinho pela ÚNICA vez aqui
-                  const newCartId = Date.now().toString();
-                  const newCart: Cart = {
-                    id: newCartId,
-                    supermarket,
-                    date: new Date().toISOString(),
-                    items: [],
-                    total: 0,
-                    dailyBudget,
-                  };
-                  
-                  try {
-                    await CartsStorage.saveCart(newCart);
-                    setCartId(newCartId);
+                <Pressable
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={() => {
                     setShowSupermarketModal(false);
-                  } catch (error) {
-                    console.error('Erro ao criar carrinho:', error);
-                    Alert.alert('Erro', 'Não foi possível criar o carrinho.');
-                  }
-                }}>
-                <Text style={styles.modalButtonText}>Continuar</Text>
-              </Pressable>
-            </View>
+                    router.replace('/screens/HomeScreen');
+                  }}>
+                  <Text style={styles.modalCancelButtonText}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.modalButton}
+                  onPress={async () => {
+                    if (!supermarket.trim()) {
+                      Alert.alert('Atenção', 'Por favor, informe o nome do supermercado.');
+                      return;
+                    }
+
+                    // Criar e salvar o carrinho pela ÚNICA vez aqui
+                    const newCartId = Date.now().toString();
+                    const newCart: Cart = {
+                      id: newCartId,
+                      supermarket,
+                      date: new Date().toISOString(),
+                      items: [],
+                      total: 0,
+                      dailyBudget,
+                    };
+
+                    try {
+                      await CartsStorage.saveCart(newCart);
+                      setCartId(newCartId);
+                      setShowSupermarketModal(false);
+                    } catch (error) {
+                      console.error('Erro ao criar carrinho:', error);
+                      Alert.alert('Erro', 'Não foi possível criar o carrinho.');
+                    }
+                  }}>
+                  <Text style={styles.modalButtonText}>Continuar</Text>
+                </Pressable>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -551,18 +551,18 @@ export default function CartScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setImageModalVisible(false)}>
-        <Pressable 
+        <Pressable
           style={styles.imageModalOverlay}
           onPress={() => setImageModalVisible(false)}>
           <View style={styles.imageModalContent}>
             {selectedImage && (
-              <Image 
-                source={{ uri: selectedImage }} 
+              <Image
+                source={{ uri: selectedImage }}
                 style={styles.fullImage}
                 contentFit="contain"
               />
             )}
-            <Pressable 
+            <Pressable
               style={styles.closeImageButton}
               onPress={() => setImageModalVisible(false)}>
               <Text style={styles.closeImageButtonText}>×</Text>
@@ -584,6 +584,9 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   backButton: {
     marginBottom: 10,

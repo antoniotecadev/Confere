@@ -4,16 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 export default function ContactScreen() {
@@ -156,8 +156,7 @@ export default function ContactScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle" size={24} color="#2196F3" />
           <Text style={styles.infoText}>
-            Mudou de telemóvel? Perdeu os dados? Envie-nos o seu ID e número de WhatsApp
-            para recuperarmos o seu Premium!
+            Use este formulário para entrar em contacto connosco. Responderemos o mais rápido possível através do WhatsApp.
           </Text>
         </View>
 
