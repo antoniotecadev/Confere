@@ -442,7 +442,7 @@ export default function HistoryScreen() {
             <Image
               source={{ uri: selectedComparison.receiptPhotos[selectedPhotoIndex] }}
               style={styles.photoModalImage}
-              resizeMode="contain"
+              contentFit="contain"
             />
           )}
         </Pressable>

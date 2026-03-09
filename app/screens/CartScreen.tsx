@@ -284,7 +284,7 @@ export default function CartScreen() {
           <Image 
             source={getSupermarketLogo(supermarket)} 
             style={styles.bannerLogo}
-            resizeMode="contain"
+            contentFit="contain"
           />
         </View>
       )}
@@ -559,7 +559,7 @@ export default function CartScreen() {
               <Image 
                 source={{ uri: selectedImage }} 
                 style={styles.fullImage}
-                resizeMode="contain"
+                contentFit="contain"
               />
             )}
             <Pressable 

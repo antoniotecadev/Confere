@@ -146,7 +146,7 @@ export default function HomeScreen() {
         <Image
           source={getSupermarketLogo(item.supermarket)}
           style={styles.supermarketLogo}
-          resizeMode="contain"
+          contentFit="contain"
         />
         <View style={styles.cartInfo}>
           <View style={styles.cartHeader}>

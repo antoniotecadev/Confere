@@ -460,7 +460,7 @@ export default function ComparisonScreen() {
             <Image
               source={{ uri: receiptPhotos[selectedPhotoIndex] }}
               style={styles.photoModalImage}
-              resizeMode="contain"
+              contentFit="contain"
             />
           )}
         </View>
