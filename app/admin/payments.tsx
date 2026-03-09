@@ -24,7 +24,9 @@ import {
     Dimensions,
     FlatList,
     Keyboard,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -59,7 +61,7 @@ export default function AdminPaymentsScreen() {
     // Modal de rejeição
     const [rejectTarget, setRejectTarget] = useState<AdminPayment | null>(null);
     const [rejectReason, setRejectReason] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [isProcessingId, setIsProcessingId] = useState<string | null>(null); // ID do pagamento a processar (aprov/rejeit)
 
     // Subscrição Firebase (cleanup)
     const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -160,13 +162,13 @@ export default function AdminPaymentsScreen() {
     };
 
     const processApprove = async (payment: AdminPayment) => {
-        setIsProcessing(true);
+        setIsProcessingId(payment.id);
         const result = await AdminPaymentsService.approvePayment(
             payment,
             adminUser?.email ?? 'unknown',
             adminUser?.uid ?? 'unknown'
         );
-        setIsProcessing(false);
+        setIsProcessingId(null);
 
         if (result.success) {
             Alert.alert('✅ Aprovado!', `Premium activado com sucesso para o utilizador.`);
@@ -189,7 +191,7 @@ export default function AdminPaymentsScreen() {
         }
 
         Keyboard.dismiss();
-        setIsProcessing(true);
+        setIsProcessingId(rejectTarget.id);
 
         const result = await AdminPaymentsService.rejectPayment(
             rejectTarget,
@@ -198,7 +200,7 @@ export default function AdminPaymentsScreen() {
             adminUser?.uid ?? 'unknown'
         );
 
-        setIsProcessing(false);
+        setIsProcessingId(null);
         setRejectTarget(null);
         setRejectReason('');
 
@@ -309,7 +311,7 @@ export default function AdminPaymentsScreen() {
                         <Pressable
                             style={[styles.actionBtn, styles.rejectBtn]}
                             onPress={() => openRejectModal(item)}
-                            disabled={isProcessing}
+                            disabled={isProcessingId === item.id}
                         >
                             <Ionicons name="close-outline" size={18} color="#C62828" />
                             <Text style={styles.rejectBtnText}>Rejeitar</Text>
@@ -318,9 +320,9 @@ export default function AdminPaymentsScreen() {
                         <Pressable
                             style={[styles.actionBtn, styles.approveBtn]}
                             onPress={() => handleApprove(item)}
-                            disabled={isProcessing}
+                            disabled={isProcessingId === item.id}
                         >
-                            {isProcessing ? (
+                            {isProcessingId === item.id ? (
                                 <ActivityIndicator size="small" color="#FFF" />
                             ) : (
                                 <>
@@ -498,8 +500,12 @@ export default function AdminPaymentsScreen() {
                 animationType="slide"
                 onRequestClose={() => setRejectTarget(null)}
             >
-                <Pressable style={styles.rejectModalOverlay} onPress={() => setRejectTarget(null)}>
-                    <Pressable style={styles.rejectModalContent} onPress={e => e.stopPropagation()}>
+                <KeyboardAvoidingView
+                    style={styles.rejectModalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setRejectTarget(null)} />
+                    <View style={styles.rejectModalContent}>
                         <Text style={styles.rejectModalTitle}>Rejeitar Pagamento</Text>
                         <Text style={styles.rejectModalSub}>
                             Utilizador: ...{rejectTarget?.userId.slice(-8)}
@@ -529,20 +535,20 @@ export default function AdminPaymentsScreen() {
                             <Pressable
                                 style={[
                                     styles.rejectModalConfirm,
-                                    (!rejectReason.trim() || isProcessing) && styles.rejectModalConfirmDisabled,
+                                    (!rejectReason.trim() || isProcessingId !== null) && styles.rejectModalConfirmDisabled,
                                 ]}
                                 onPress={processReject}
-                                disabled={!rejectReason.trim() || isProcessing}
+                                disabled={!rejectReason.trim() || isProcessingId !== null}
                             >
-                                {isProcessing ? (
+                                {isProcessingId === rejectTarget?.id ? (
                                     <ActivityIndicator size="small" color="#FFF" />
                                 ) : (
                                     <Text style={styles.rejectModalConfirmText}>Confirmar Rejeição</Text>
                                 )}
                             </Pressable>
                         </View>
-                    </Pressable>
-                </Pressable>
+                    </View>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );
