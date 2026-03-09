@@ -872,35 +872,32 @@ export default function AddProductScreen() {
 
         {/* Footer with Save Button */}
         <View style={styles.footer}>
-          {/* Microfone único contextual */}
-          <Pressable
-            style={[styles.singleMicBtn, voiceListening && styles.singleMicBtnActive]}
-            onPressIn={startVoiceListening}
-            onPressOut={stopVoiceListening}>
-            <MaterialIcons name="mic" size={20} color="#FFFFFF" />
-            <Text style={styles.singleMicBtnText}>
-              {voiceListening
-                ? `A ouvir ${focusedField === 'name' ? 'nome' : 'preço'}...`
-                : `Ditar ${focusedField === 'name' ? 'nome' : 'preço'}`}
-            </Text>
-          </Pressable>
           {voiceError ? <Text style={styles.voiceError}>{voiceError}</Text> : null}
-          <Pressable
-            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-            onPress={() => handleSaveProduct(false)}
-            disabled={isLoading}>
-            <MaterialIcons name="add-shopping-cart" size={20} color="#FFFFFF" />
-            <Text style={styles.saveButtonText}>
-              {isLoading ? 'Salvando...' : 'Adicionar Produto'}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.finishButton, isLoading && styles.saveButtonDisabled]}
-            onPress={() => router.back()}
-            disabled={isLoading}>
-            <MaterialIcons name="shopping-cart" size={20} color="#2196F3" />
-            <Text style={styles.finishButtonText}>Carrinho</Text>
-          </Pressable>
+          <View style={styles.footerRow}>
+            {/* Microfone */}
+            <Pressable
+              style={[styles.footerMicBtn, voiceListening && styles.footerMicBtnActive]}
+              onPressIn={startVoiceListening}
+              onPressOut={stopVoiceListening}>
+              <MaterialIcons name="mic" size={24} color="#FFFFFF" />
+            </Pressable>
+            {/* Adicionar Produto */}
+            <Pressable
+              style={[styles.footerSaveBtn, isLoading && styles.saveButtonDisabled]}
+              onPress={() => handleSaveProduct(false)}
+              disabled={isLoading}>
+              {isLoading
+                ? <ActivityIndicator color="#FFFFFF" size="small" />
+                : <MaterialIcons name="add-shopping-cart" size={24} color="#FFFFFF" />}
+            </Pressable>
+            {/* Voltar ao Carrinho */}
+            <Pressable
+              style={[styles.footerCartBtn, isLoading && styles.saveButtonDisabled]}
+              onPress={() => router.back()}
+              disabled={isLoading}>
+              <MaterialIcons name="shopping-cart" size={24} color="#2196F3" />
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     );
@@ -1225,19 +1222,45 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
   },
-  saveButton: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  footerMicBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#FF9800',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+  },
+  footerMicBtnActive: {
+    backgroundColor: '#E65100',
+  },
+  footerSaveBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
     backgroundColor: '#2196F3',
-    borderRadius: 12,
-    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerCartBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#2196F3',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -1428,24 +1451,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  singleMicBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FF9800',
-    borderRadius: 10,
-    paddingVertical: 12,
-    marginBottom: 10,
-  },
-  singleMicBtnActive: {
-    backgroundColor: '#E65100',
-  },
-  singleMicBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
   },
   voiceError: {
     fontSize: 12,
