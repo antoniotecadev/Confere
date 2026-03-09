@@ -125,6 +125,12 @@ export const supermarkets: Supermarket[] = [
     name: 'Shopping Fortaleza',
     logo: require('@/assets/images/supermarkets/shopping-fortaleza.png'),
     searchTerms: ['shopping fortaleza', 'fortaleza'],
+  },
+  {
+    id: 'nossa-casa',
+    name: 'Nossa Casa',
+    logo: require('@/assets/images/supermarkets/nossa-casa.png'),
+    searchTerms: ['nossa casa', 'nossa'],
   }
 ];
 
