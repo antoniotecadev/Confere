@@ -4,6 +4,7 @@ import { ComparisonsStorage } from '@/utils/comparisons-storage';
 import { getFeatureInfo } from '@/utils/features-info';
 import { getSupermarketLogo } from '@/utils/supermarkets';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
@@ -30,8 +31,15 @@ export default function HomeScreen() {
   const [fabsVisible, setFabsVisible] = useState(true);
   const fabsAnimation = useRef(new Animated.Value(1)).current;
 
+  const isVisibleFab = async () => await AsyncStorage.getItem('fabsVisible');
+
   useFocusEffect(
     useCallback(() => {
+      isVisibleFab().then(value => {
+        const visible = value !== '0'; // null (1.º uso) → true; '0' → false; '1' → true
+        setFabsVisible(visible);
+        fabsAnimation.setValue(visible ? 1 : 0); // sincroniza animação sem animar
+      });
       loadCarts();
       checkBudgetAlert();
     }, [])
@@ -121,17 +129,18 @@ export default function HomeScreen() {
     return `${amount.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
   };
 
-  const toggleFabs = () => {
-    const toValue = fabsVisible ? 0 : 1;
+  const toggleFabs = async () => {
+    const newVisible = !fabsVisible;
 
     Animated.spring(fabsAnimation, {
-      toValue,
+      toValue: newVisible ? 1 : 0,
       useNativeDriver: true,
       friction: 8,
       tension: 40,
     }).start();
 
-    setFabsVisible(!fabsVisible);
+    await AsyncStorage.setItem('fabsVisible', newVisible ? '1' : '0');
+    setFabsVisible(newVisible);
   };
 
   const renderCartItem = ({ item }: { item: Cart }) => (
@@ -722,10 +731,8 @@ const styles = StyleSheet.create({
   },
   fabToggle: {
     position: 'absolute',
-    bottom: 30,
-    alignSelf: 'center',
-    left: '50%',
-    marginLeft: -24,
+    bottom: 100,
+    left: 24,
     width: 48,
     height: 48,
     borderRadius: 24,
