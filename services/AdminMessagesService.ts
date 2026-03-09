@@ -8,9 +8,11 @@
  */
 
 import { database } from '@/config/firebaseConfig';
-import { onValue, ref, serverTimestamp, update } from 'firebase/database';
+import { endBefore, get, limitToLast, onValue, orderByChild, query, ref, serverTimestamp, update } from 'firebase/database';
 import { Linking } from 'react-native';
 import { AuditLogService } from './AuditLogService';
+
+const PAGE_SIZE = 20;
 
 export interface AdminMessage {
   id: string;
@@ -24,37 +26,103 @@ export interface AdminMessage {
   respondedBy?: string;
 }
 
+export interface MessagesPage {
+  messages: AdminMessage[];
+  hasMore:  boolean;
+  /** timestamp do registo mais antigo na página — cursor para a próxima */
+  cursor:   number | null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export class AdminMessagesService {
 
   /**
-   * Subscrição em tempo real de todas as mensagens.
-   * Retorna função de limpeza (unsubscribe).
+   * Subscreve a 1.ª página em tempo real (pendentes primeiro, depois mais recentes).
+   * Usa orderByChild('timestamp') + limitToLast diretamente em contacts/ (nó já plano).
+   * Devolve a função de cancelamento.
    */
-  static subscribeToMessages(onChange: (messages: AdminMessage[]) => void): () => void {
+  static subscribeToFirstPage(callback: (page: MessagesPage) => void): () => void {
     const contactsRef = ref(database, 'contacts');
+    const q = query(contactsRef, orderByChild('timestamp'), limitToLast(PAGE_SIZE + 1));
 
-    const unsubscribe = onValue(contactsRef, (snapshot) => {
-      const messages: AdminMessage[] = [];
+    const unsubscribe = onValue(
+      q,
+      (snapshot) => {
+        const messages: AdminMessage[] = [];
 
-      if (snapshot.exists()) {
-        const data = snapshot.val() as Record<string, Omit<AdminMessage, 'id'>>;
-        for (const id in data) {
-          messages.push({ id, ...data[id] });
+        if (snapshot.exists()) {
+          snapshot.forEach((child) => {
+            messages.push({ id: child.key!, ...child.val() as Omit<AdminMessage, 'id'> });
+          });
         }
-      }
 
-      // Ordenar: pendentes primeiro, depois por data decrescente
+        // Mais recente primeiro, pendentes no topo
+        messages.sort((a, b) => {
+          if (a.status === 'pending' && b.status !== 'pending') return -1;
+          if (a.status !== 'pending' && b.status === 'pending') return 1;
+          return (b.timestamp ?? 0) - (a.timestamp ?? 0);
+        });
+
+        const hasMore  = messages.length > PAGE_SIZE;
+        const result   = hasMore ? messages.slice(0, PAGE_SIZE) : messages;
+        const cursor   = result.length > 0 ? Math.min(...result.map(m => m.timestamp ?? 0)) : null;
+
+        callback({ messages: result, hasMore, cursor });
+      },
+      (error) => {
+        console.error('[AdminMessages] Firebase onValue error:', error);
+        callback({ messages: [], hasMore: false, cursor: null });
+      }
+    );
+
+    return unsubscribe;
+  }
+
+  /**
+   * Carrega a próxima página (one-shot) a partir do cursor.
+   * cursor = timestamp do registo mais antigo da página anterior.
+   */
+  static async loadNextPage(cursor: number): Promise<MessagesPage> {
+    try {
+      const contactsRef = ref(database, 'contacts');
+      const q = query(
+        contactsRef,
+        orderByChild('timestamp'),
+        endBefore(cursor),
+        limitToLast(PAGE_SIZE + 1)
+      );
+
+      const snapshot = await get(q);
+      if (!snapshot.exists()) return { messages: [], hasMore: false, cursor: null };
+
+      const messages: AdminMessage[] = [];
+      snapshot.forEach((child) => {
+        messages.push({ id: child.key!, ...child.val() as Omit<AdminMessage, 'id'> });
+      });
+
       messages.sort((a, b) => {
         if (a.status === 'pending' && b.status !== 'pending') return -1;
         if (a.status !== 'pending' && b.status === 'pending') return 1;
         return (b.timestamp ?? 0) - (a.timestamp ?? 0);
       });
 
-      onChange(messages);
-    });
+      const hasMore  = messages.length > PAGE_SIZE;
+      const result   = hasMore ? messages.slice(0, PAGE_SIZE) : messages;
+      const newCursor = result.length > 0 ? Math.min(...result.map(m => m.timestamp ?? 0)) : null;
 
-    return unsubscribe;
+      return { messages: result, hasMore, cursor: newCursor };
+    } catch (err) {
+      console.error('[AdminMessages] Erro ao carregar mais:', err);
+      return { messages: [], hasMore: false, cursor: null };
+    }
+  }
+
+  /**
+   * Subscrição em tempo real de todas as mensagens.
+   * Mantido para compatibilidade — usa subscribeToFirstPage internamente.
+   */
+  static subscribeToMessages(onChange: (messages: AdminMessage[]) => void): () => void {
+    return AdminMessagesService.subscribeToFirstPage(({ messages }) => onChange(messages));
   }
 
   /**

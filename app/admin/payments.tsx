@@ -254,17 +254,15 @@ export default function AdminPaymentsScreen() {
                 </View>
 
                 {/* ID do utilizador */}
-                <View style={styles.userIdRow}>
-                    <Ionicons name="person-outline" size={14} color="#666" />
-                    <Text style={styles.userIdText} numberOfLines={1}>
-                        {item.userId.length > 20
-                            ? `...${item.userId.slice(-16)}`
-                            : item.userId}
-                    </Text>
-                    <Pressable onPress={() => copyToClipboard(item.userId, 'ID do Utilizador')}>
+                <Pressable onPress={() => copyToClipboard(item.userId, 'ID do Utilizador')}>
+                    <View style={styles.userIdRow}>
+                        <Ionicons name="person-outline" size={14} color="#666" />
+                        <Text style={styles.userIdText} numberOfLines={1}>
+                            {item.userId}
+                        </Text>
                         <Ionicons name="copy-outline" size={14} color="#666" />
-                    </Pressable>
-                </View>
+                    </View>
+                </Pressable>
 
                 {/* Valor e duração */}
                 <View style={styles.planRow}>

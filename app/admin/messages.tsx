@@ -7,22 +7,24 @@
  * - Marcar como respondida (manual ou automático ao abrir WhatsApp)
  */
 
+import useUtils from '@/hooks/useUtils';
 import {
-    AdminMessage,
-    AdminMessagesService,
+  AdminMessage,
+  AdminMessagesService,
+  MessagesPage,
 } from '@/services/AdminMessagesService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { useAdmin } from './_layout';
 
@@ -31,12 +33,16 @@ type FilterTab = 'pending' | 'all' | 'responded';
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AdminMessagesScreen() {
   const { adminUser } = useAdmin();
+  const { copyToClipboard } = useUtils();
 
-  const [allMessages, setAllMessages]   = useState<AdminMessage[]>([]);
-  const [isLoading, setIsLoading]       = useState(true);
+  const [allMessages, setAllMessages] = useState<AdminMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab]       = useState<FilterTab>('pending');
-  const [processing, setProcessing]     = useState<string | null>(null); // id da msg em processo
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<FilterTab>('pending');
+  const [processing, setProcessing] = useState<string | null>(null); // id da msg em processo
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -44,12 +50,34 @@ export default function AdminMessagesScreen() {
   const subscribe = useCallback(() => {
     if (unsubscribeRef.current) unsubscribeRef.current();
 
-    unsubscribeRef.current = AdminMessagesService.subscribeToMessages((msgs) => {
-      setAllMessages(msgs);
+    unsubscribeRef.current = AdminMessagesService.subscribeToFirstPage((page: MessagesPage) => {
+      // Actualiza 1.ª página em tempo real; páginas extras mantidas
+      setAllMessages(prev => {
+        const freshIds = new Set(page.messages.map(m => m.id));
+        const kept = prev.filter(m => !freshIds.has(m.id) &&
+          (page.cursor === null || (m.timestamp ?? 0) < page.cursor));
+        return [...page.messages, ...kept];
+      });
+      setHasMore(page.hasMore);
+      setCursor(page.cursor);
       setIsLoading(false);
       setIsRefreshing(false);
     });
   }, []);
+
+  // ── Carregar página seguinte ─────────────────────────────────────────
+  const loadMore = async () => {
+    if (!hasMore || isLoadingMore || cursor === null) return;
+    setIsLoadingMore(true);
+    const page = await AdminMessagesService.loadNextPage(cursor);
+    setAllMessages(prev => [
+      ...prev,
+      ...page.messages.filter(nm => !prev.some(m => m.id === nm.id)),
+    ]);
+    setHasMore(page.hasMore);
+    if (page.cursor !== null) setCursor(page.cursor);
+    setIsLoadingMore(false);
+  };
 
   useEffect(() => {
     subscribe();
@@ -58,6 +86,9 @@ export default function AdminMessagesScreen() {
 
   const onRefresh = () => {
     setIsRefreshing(true);
+    setAllMessages([]);
+    setHasMore(false);
+    setCursor(null);
     subscribe();
   };
 
@@ -94,7 +125,7 @@ export default function AdminMessagesScreen() {
       await AdminMessagesService.markAsResponded(
         msg,
         adminUser?.email ?? 'unknown',
-        adminUser?.uid   ?? 'unknown'
+        adminUser?.uid ?? 'unknown'
       );
     }
 
@@ -115,7 +146,7 @@ export default function AdminMessagesScreen() {
             await AdminMessagesService.markAsResponded(
               msg,
               adminUser?.email ?? 'unknown',
-              adminUser?.uid   ?? 'unknown'
+              adminUser?.uid ?? 'unknown'
             );
             setProcessing(null);
           },
@@ -131,15 +162,15 @@ export default function AdminMessagesScreen() {
 
     const date = item.timestamp
       ? new Date(item.timestamp).toLocaleString('pt-AO', {
-          day: '2-digit', month: 'short', year: 'numeric',
-          hour: '2-digit', minute: '2-digit',
-        })
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
       : '—';
 
     const respondedDate = item.respondedAt
       ? new Date(item.respondedAt).toLocaleString('pt-AO', {
-          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-        })
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+      })
       : null;
 
     return (
@@ -174,13 +205,24 @@ export default function AdminMessagesScreen() {
         </View>
 
         {/* WhatsApp do utilizador */}
-        <View style={styles.userRow}>
-          <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
-          <Text style={styles.userPhone}>{item.whatsappNumber}</Text>
-          <Text style={styles.userId} numberOfLines={1}>
-            ...{item.userId.slice(-8)}
-          </Text>
-        </View>
+        <Pressable onPress={() => copyToClipboard(item.whatsappNumber, 'Número do WhatsApp')}>
+          <View style={styles.userRow}>
+            <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
+            <Text style={styles.userPhone} numberOfLines={1}>{item.whatsappNumber}</Text>
+            <Ionicons name="copy-outline" size={14} color="#666" />
+          </View>
+        </Pressable>
+
+        {/* ID do utilizador */}
+        <Pressable onPress={() => copyToClipboard(item.userId, 'ID do Utilizador')}>
+          <View style={styles.userRow}>
+            <Ionicons name="person-outline" size={14} color="#666" />
+            <Text style={styles.userIdText} numberOfLines={1}>
+              {item.userId}
+            </Text>
+            <Ionicons name="copy-outline" size={14} color="#666" />
+          </View>
+        </Pressable>
 
         {/* Mensagem */}
         <View style={styles.messageBox}>
@@ -250,8 +292,10 @@ export default function AdminMessagesScreen() {
       {/* Summary bar */}
       <View style={styles.summaryBar}>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryNum}>{allMessages.length}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
+          <Text style={styles.summaryNum}>
+            {allMessages.length}{hasMore ? '+' : ''}
+          </Text>
+          <Text style={styles.summaryLabel}>Carregadas</Text>
         </View>
         <View style={[styles.summaryItem, styles.summaryHL]}>
           <Text style={[styles.summaryNum, { color: '#FFD54F' }]}>{pendingCount}</Text>
@@ -274,8 +318,8 @@ export default function AdminMessagesScreen() {
       >
         {(['pending', 'all', 'responded'] as FilterTab[]).map((tab) => {
           const labels: Record<FilterTab, string> = {
-            pending:   `Pendentes${pendingCount > 0 ? ` (${pendingCount})` : ''}`,
-            all:       'Todas',
+            pending: `Pendentes${pendingCount > 0 ? ` (${pendingCount})` : ''}`,
+            all: 'Todas',
             responded: 'Respondidas',
           };
           const active = activeTab === tab;
@@ -302,6 +346,30 @@ export default function AdminMessagesScreen() {
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#6A1B9A']} />
         }
+        ListFooterComponent={
+          hasMore ? (
+            <Pressable
+              style={styles.loadMoreBtn}
+              onPress={loadMore}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? (
+                <ActivityIndicator size="small" color="#6A1B9A" />
+              ) : (
+                <>
+                  <Ionicons name="chevron-down-outline" size={16} color="#6A1B9A" />
+                  <Text style={styles.loadMoreText}>Carregar Mais</Text>
+                </>
+              )}
+            </Pressable>
+          ) : (
+            allMessages.length > 0 ? (
+              <Text style={styles.allLoadedText}>
+                ✔ Todas as {allMessages.length} mensagens carregadas
+              </Text>
+            ) : null
+          )
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="chatbubbles-outline" size={56} color="#CFD8DC" />
@@ -320,8 +388,8 @@ export default function AdminMessagesScreen() {
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: '#F0F2F5' },
-  centered:    { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  container: { flex: 1, backgroundColor: '#F0F2F5' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: { color: '#666', fontSize: 15 },
 
   summaryBar: {
@@ -330,13 +398,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
   },
-  summaryItem:  { flex: 1, alignItems: 'center' },
+  summaryItem: { flex: 1, alignItems: 'center' },
   summaryHL: {
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: '#7B1FA2',
   },
-  summaryNum:   { fontSize: 22, fontWeight: 'bold', color: '#FFFFFF' },
+  summaryNum: { fontSize: 22, fontWeight: 'bold', color: '#FFFFFF' },
   summaryLabel: { fontSize: 11, color: '#CE93D8', marginTop: 2 },
 
   tabsScroll: {
@@ -354,8 +422,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  tabActive:     { backgroundColor: '#6A1B9A', borderColor: '#6A1B9A' },
-  tabText:       { fontSize: 13, color: '#555', fontWeight: '500' },
+  tabActive: { backgroundColor: '#6A1B9A', borderColor: '#6A1B9A' },
+  tabText: { fontSize: 13, color: '#555', fontWeight: '500' },
   tabTextActive: { color: '#FFFFFF', fontWeight: '700' },
 
   listContent: { padding: 12, paddingBottom: 40, gap: 12 },
@@ -387,7 +455,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   statusText: { fontSize: 12, fontWeight: '700' },
-  cardDate:   { fontSize: 11, color: '#999' },
+  cardDate: { fontSize: 11, color: '#999' },
 
   subjectRow: {
     flexDirection: 'row',
@@ -407,7 +475,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   userPhone: { fontSize: 13, fontWeight: '600', color: '#333', flex: 1 },
-  userId:    { fontSize: 11, color: '#999', fontFamily: 'monospace' },
+  userId: { fontSize: 11, color: '#999', fontFamily: 'monospace' },
 
   messageBox: {
     backgroundColor: '#F9F9F9',
@@ -464,6 +532,29 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     gap: 10,
   },
-  emptyTitle:    { fontSize: 18, fontWeight: 'bold', color: '#90A4AE' },
+  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#90A4AE' },
   emptySubtitle: { fontSize: 13, color: '#B0BEC5', textAlign: 'center', paddingHorizontal: 32 },
+  userIdText: { fontSize: 12, color: '#555', flex: 1, fontFamily: 'monospace' },
+
+  // Carregar mais
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginVertical: 16,
+    marginHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#6A1B9A',
+    backgroundColor: '#FFFFFF',
+  },
+  loadMoreText: { fontSize: 14, fontWeight: '700', color: '#6A1B9A' },
+  allLoadedText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#B0BEC5',
+    paddingVertical: 16,
+  },
 });
