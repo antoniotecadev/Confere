@@ -188,3 +188,58 @@ export async function enableNotifications(): Promise<void> {
   await AsyncStorage.removeItem(SCHEDULED_VERSION_KEY);
   await initNotifications();
 }
+
+// ── ID do projecto Expo (necessário para gerar o push token) ─────────────────
+const EXPO_PROJECT_ID = 'affbe6e4-fe21-440a-89bd-0dac3e1e0fb5';
+
+/**
+ * Obtém o Expo Push Token do dispositivo actual.
+ * Retorna null se não for possível (emulador sem GMS, permissão negada, etc.)
+ */
+export async function getExpoPushToken(): Promise<string | null> {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      if (newStatus !== 'granted') return null;
+    }
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId: EXPO_PROJECT_ID });
+    return tokenData.data;
+  } catch (error) {
+    console.warn('[NotificationService] Não foi possível obter push token:', error);
+    return null;
+  }
+}
+
+/**
+ * Envia uma push notification para um token Expo específico.
+ * Usa a API pública da Expo (não necessita de servidor).
+ */
+export async function sendPushNotification(
+  expoPushToken: string,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    await fetch('https://exp.host/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+      },
+      body: JSON.stringify({
+        to: expoPushToken,
+        title,
+        body,
+        data,
+        sound: 'default',
+        priority: 'high',
+        channelId: 'confere_reminders',
+      }),
+    });
+  } catch (error) {
+    console.warn('[NotificationService] Erro ao enviar push notification:', error);
+  }
+}

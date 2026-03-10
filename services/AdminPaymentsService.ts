@@ -10,6 +10,7 @@
 
 import { database } from '@/config/firebaseConfig';
 import { AuditLogService } from '@/services/AuditLogService';
+import { sendPushNotification } from '@/services/NotificationService';
 import { endBefore, get, limitToLast, onValue, orderByChild, query, ref, serverTimestamp, update } from 'firebase/database';
 
 // Número de pagamentos carregados por página
@@ -223,6 +224,18 @@ class AdminPaymentsServiceClass {
         },
       });
 
+      // 4. Notificar o utilizador (se tiver token guardado)
+      const pushToken: string | undefined = userSnap.exists() ? userSnap.val().pushToken : undefined;
+      if (pushToken) {
+        const duration = this.formatDuration(durationDays);
+        await sendPushNotification(
+          pushToken,
+          '✅ Premium Activado!',
+          `O teu pagamento de ${amount.toLocaleString('pt-AO')} Kz foi aprovado. O teu plano de ${duration} está activo até ${expiryLabel}.`,
+          { screen: 'Premium' }
+        );
+      }
+
       return { success: true };
     } catch (err) {
       console.error('[AdminPayments] Erro ao aprovar pagamento:', err);
@@ -280,6 +293,17 @@ class AdminPaymentsServiceClass {
         targetUserId: userId,
         details: { paymentId, amount, durationDays, reason },
       });
+
+      // 4. Notificar o utilizador (se tiver token guardado)
+      const pushToken: string | undefined = userData?.pushToken;
+      if (pushToken) {
+        await sendPushNotification(
+          pushToken,
+          '❌ Pagamento Rejeitado',
+          `O teu comprovativo não foi aceite. Motivo: ${reason}. Envia um novo comprovativo válido para activar o Premium.`,
+          { screen: 'Premium' }
+        );
+      }
 
       return { success: true };
     } catch (err) {

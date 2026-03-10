@@ -1,8 +1,9 @@
 import { database } from '@/config/firebaseConfig';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { get, push, ref, serverTimestamp, set } from 'firebase/database';
+import { get, push, ref, serverTimestamp, set, update } from 'firebase/database';
 import { Alert } from 'react-native';
+import { getExpoPushToken } from './NotificationService';
 import { UserService } from './UserService';
 
 const PREMIUM_STATUS_KEY = 'confere_premium_status';
@@ -257,12 +258,15 @@ class PremiumServiceClass {
 
       const deviceInfo = await UserService.getDeviceInfo();
 
+      // Obter o push token do dispositivo (silencioso se falhar)
+      const pushToken = await getExpoPushToken();
+
       // Criar pagamento na pasta do usuário (estrutura: payments/userId/paymentId)
       const userPaymentsRef = ref(database, `payments/${userId}`);
       const newPaymentRef = push(userPaymentsRef);
       const paymentId = newPaymentRef.key!;
 
-      const payment = {
+      const payment: Record<string, unknown> = {
         amount,
         durationDays,
         receiptUri,
@@ -270,20 +274,28 @@ class PremiumServiceClass {
         status: 'pending',
         createdAt: serverTimestamp(),
       };
+      if (pushToken) payment.pushToken = pushToken;
 
       await set(newPaymentRef, payment);
 
       // Índice plano para paginação no painel admin
       // (Firebase RTDB só permite orderByChild em nós planos)
       const indexRef = ref(database, `payments_index/${paymentId}`);
-      await set(indexRef, {
+      const indexEntry: Record<string, unknown> = {
         userId,
         amount,
         durationDays,
         receiptUri,
         status:    'pending',
         createdAt: serverTimestamp(),
-      });
+      };
+      if (pushToken) indexEntry.pushToken = pushToken;
+      await set(indexRef, indexEntry);
+
+      // Guardar o push token no perfil do utilizador para notificações futuras
+      if (pushToken) {
+        await update(ref(database, `users/${userId}`), { pushToken });
+      }
 
       return { success: true };
     } catch (error) {
