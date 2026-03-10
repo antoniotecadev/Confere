@@ -11,10 +11,11 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -61,6 +62,36 @@ export default function CartScreen() {
   const [draftListening, setDraftListening] = useState(false);
   // Preço inline mic
   const [inlinePriceMic, setInlinePriceMic] = useState(false);
+
+  // ── Animação scroll-aware do header e footer ──
+  const HEADER_H = 94; // paddingTop:50 + paddingBottom:20 + row ~24
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const footerAnim = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const footerHeightRef = useRef(200);
+
+  const showBars = () => {
+    Animated.parallel([
+      Animated.timing(headerAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
+      Animated.timing(footerAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const hideBars = () => {
+    Animated.parallel([
+      Animated.timing(headerAnim, { toValue: -HEADER_H, duration: 220, useNativeDriver: true }),
+      Animated.timing(footerAnim, { toValue: footerHeightRef.current, duration: 220, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleScroll = (event: any) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+    lastScrollY.current = currentY;
+    if (currentY < 10) { showBars(); return; }
+    if (diff > 5) hideBars();
+    else if (diff < -5) showBars();
+  };
 
   // Funções auxiliares (devem estar antes dos hooks que as usam)
   const loadCart = async (id: string) => {
@@ -523,8 +554,8 @@ export default function CartScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Floating Header */}
+      <Animated.View style={[styles.header, { transform: [{ translateY: headerAnim }] }]}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </Pressable>
@@ -532,18 +563,7 @@ export default function CartScreen() {
         <Pressable onPress={handleQuickAdd} style={styles.quickAddBtn}>
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </Pressable>
-      </View>
-
-      {/* Supermarket Banner */}
-      {supermarket && (
-        <View style={styles.supermarketBanner}>
-          <Image
-            source={getSupermarketLogo(supermarket)}
-            style={styles.bannerLogo}
-            contentFit="contain"
-          />
-        </View>
-      )}
+      </Animated.View>
 
       {/* Products List */}
       <FlatList
@@ -557,11 +577,25 @@ export default function CartScreen() {
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={newItemDraft ? renderDraftCard() : null}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        ListHeaderComponent={
+          <View>
+            {supermarket ? (
+              <View style={styles.supermarketBanner}>
+                <Image source={getSupermarketLogo(supermarket)} style={styles.bannerLogo} contentFit="contain" />
+              </View>
+            ) : null}
+            {newItemDraft ? renderDraftCard() : null}
+          </View>
+        }
       />
 
-      {/* Footer with Total and Add Button */}
-      <View style={styles.footer}>
+      {/* Floating Footer */}
+      <Animated.View
+        style={[styles.footer, { transform: [{ translateY: footerAnim }] }]}
+        onLayout={e => { footerHeightRef.current = e.nativeEvent.layout.height; }}
+      >
         {/* Aviso de produtos sem preço */}
         {items.filter(i => i.price === 0).length > 0 && (
           <View style={styles.pendingPriceBanner}>
@@ -631,7 +665,7 @@ export default function CartScreen() {
             </Pressable>
           )}
         </View>
-      </View>
+      </Animated.View>
 
       {/* Supermarket Name Modal */}
       <Modal
@@ -849,6 +883,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+    overflow: 'hidden',
   },
   header: {
     backgroundColor: '#2196F3',
@@ -858,6 +893,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   backButton: {
     marginBottom: 10,
@@ -874,11 +914,12 @@ const styles = StyleSheet.create({
   supermarketBanner: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
-    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    marginHorizontal: -16,
+    marginBottom: 16,
   },
   bannerLogo: {
     width: 120,
@@ -886,6 +927,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingTop: 110, // header height (94) + 16 gap
+    paddingBottom: 220, // footer height estimate + gap
   },
   listContentEmpty: {
     flex: 1,
@@ -988,6 +1031,11 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   budgetProgressContainer: {
     backgroundColor: '#F5F5F5',
