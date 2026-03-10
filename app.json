@@ -22,7 +22,11 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.SCHEDULE_EXACT_ALARM"
       ],
       "package": "com.antonioteca.Confere"
     },
@@ -70,7 +74,16 @@
         }
       ],
       "expo-asset",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#2196F3",
+          "defaultChannel": "confere_reminders",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
