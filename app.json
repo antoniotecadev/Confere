@@ -38,6 +38,7 @@
     "plugins": [
       "expo-router",
       "./plugins/withDisableLintVital",
+      "./plugins/withGoogleServices",
       [
         "expo-splash-screen",
         {
