@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "600788511196",
+    "firebase_url": "https://confere-angola-default-rtdb.firebaseio.com",
+    "project_id": "confere-angola",
+    "storage_bucket": "confere-angola.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:600788511196:android:441f5d65b342f65fb94719",
+        "android_client_info": {
+          "package_name": "com.antonioteca.Confere"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqjpiIUsWFhrBErWXV7dGsV5MFPHvacDs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -55,8 +55,7 @@ const MESSAGES: Record<keyof typeof IDS, { title: string; body: string }> = {
 // ── Configura como as notificações aparecem quando a app está em primeiro plano
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
@@ -71,6 +70,14 @@ async function ensureAndroidChannel() {
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#2196F3',
+    sound: 'confere-notification.wav',
+  });
+
+  await Notifications.setNotificationChannelAsync('push-messages', {
+    name: 'Notificações de Mensagens',
+    importance: Notifications.AndroidImportance.HIGH,
+    lightColor: '#2196F3',
+    sound: 'confere-notification.wav',
   });
 }
 
@@ -85,7 +92,7 @@ async function requestPermission(): Promise<boolean> {
 // ── Cancela apenas os nossos identificadores ─────────────────────────────────
 async function cancelOurNotifications() {
   await Promise.all(Object.values(IDS).map(id =>
-    Notifications.cancelScheduledNotificationAsync(id).catch(() => {/* ignora se não existe */})
+    Notifications.cancelScheduledNotificationAsync(id).catch(() => {/* ignora se não existe */ })
   ));
 }
 
@@ -100,7 +107,7 @@ async function scheduleAll() {
     content: {
       title: MESSAGES.FRIDAY.title,
       body: MESSAGES.FRIDAY.body,
-      sound: false,
+      sound: "confere-notification.wav",
       data: { screen: 'Home' },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 6, hour, minute },
@@ -112,7 +119,7 @@ async function scheduleAll() {
     content: {
       title: MESSAGES.SATURDAY.title,
       body: MESSAGES.SATURDAY.body,
-      sound: false,
+      sound: "confere-notification.wav",
       data: { screen: 'Home' },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 7, hour, minute },
@@ -124,7 +131,7 @@ async function scheduleAll() {
     content: {
       title: MESSAGES.SUNDAY.title,
       body: MESSAGES.SUNDAY.body,
-      sound: false,
+      sound: "confere-notification.wav",
       data: { screen: 'Home' },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour, minute },
@@ -136,7 +143,7 @@ async function scheduleAll() {
     content: {
       title: MESSAGES.FIRST.title,
       body: MESSAGES.FIRST.body,
-      sound: false,
+      sound: "confere-notification.wav",
       data: { screen: 'Home' },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.MONTHLY, day: 1, hour, minute },
@@ -148,7 +155,7 @@ async function scheduleAll() {
     content: {
       title: MESSAGES.FIFTEENTH.title,
       body: MESSAGES.FIFTEENTH.body,
-      sound: false,
+      sound: "confere-notification.wav",
       data: { screen: 'Home' },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.MONTHLY, day: 15, hour, minute },
@@ -191,6 +198,7 @@ export async function enableNotifications(): Promise<void> {
 
 // ── ID do projecto Expo (necessário para gerar o push token) ─────────────────
 const EXPO_PROJECT_ID = 'affbe6e4-fe21-440a-89bd-0dac3e1e0fb5';
+const EXPO_PUSH_API_URL = 'https://exp.host/--/api/v2/push/send';
 
 /**
  * Obtém o Expo Push Token do dispositivo actual.
@@ -222,7 +230,7 @@ export async function sendPushNotification(
   data: Record<string, unknown> = {}
 ): Promise<void> {
   try {
-    await fetch('https://exp.host/api/v2/push/send', {
+    const response = await fetch(EXPO_PUSH_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -234,11 +242,34 @@ export async function sendPushNotification(
         title,
         body,
         data,
-        sound: 'default',
+        sound: 'confere-notification.wav',
         priority: 'high',
-        channelId: 'confere_reminders',
+        channelId: 'push-messages',
       }),
     });
+
+    const rawBody = await response.text();
+    let result: any = null;
+    try {
+      result = rawBody ? JSON.parse(rawBody) : null;
+    } catch {
+      console.warn('[NotificationService] Resposta não-JSON da Expo Push API:', response.status, rawBody);
+      return;
+    }
+
+    if (!response.ok) {
+      console.warn('[NotificationService] Falha HTTP ao enviar push:', response.status, result ?? rawBody);
+      return;
+    }
+
+    const ticket = result?.data;
+    const isTicketError = ticket?.status === 'error';
+    if (isTicketError) {
+      console.warn('[NotificationService] Expo Push Ticket com erro:', ticket?.details ?? ticket);
+      return;
+    }
+
+    console.log('[NotificationService] Expo Push Ticket OK:', ticket?.id ?? ticket);
   } catch (error) {
     console.warn('[NotificationService] Erro ao enviar push notification:', error);
   }

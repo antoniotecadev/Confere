@@ -28,7 +28,8 @@
         "android.permission.USE_EXACT_ALARM",
         "android.permission.SCHEDULE_EXACT_ALARM"
       ],
-      "package": "com.antonioteca.Confere"
+      "package": "com.antonioteca.Confere",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -81,7 +82,9 @@
           "icon": "./assets/images/icon.png",
           "color": "#2196F3",
           "defaultChannel": "confere_reminders",
-          "sounds": []
+          "sounds": [
+            "./assets/sounds/confere-notification.wav"
+          ]
         }
       ]
     ],
