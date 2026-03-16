@@ -533,7 +533,7 @@ export default function PremiumScreen() {
               <View style={styles.stepNumberContainer}>
                 <Text style={styles.stepNumber}>1</Text>
               </View>
-              <Text style={styles.stepText}>ATM ou Multicaixa Express</Text>
+              <Text style={styles.stepText}>ATM | Express | Internet Banking</Text>
             </View>
 
             <View style={styles.step}>
