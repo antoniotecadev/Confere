@@ -93,8 +93,8 @@ const BENEFITS = [
 ];
 
 const PAYMENT_REFERENCES = [
-  { entidade: '00930', referencia: '932359808' },
-  { entidade: '10116', referencia: '932359808' },
+  { nome: '(Unitel Money)', entidade: '00930', referencia: '932359808' },
+  { nome: '(PayPay África)', entidade: '10116', referencia: '932359808' },
 ] as const;
 
 export default function PremiumScreen() {
@@ -360,13 +360,13 @@ export default function PremiumScreen() {
             <Text style={styles.paymentTitle}>Pagamento por Referência</Text>
           </View>
 
-          {PAYMENT_REFERENCES.map(({ entidade, referencia }) => (
+          {PAYMENT_REFERENCES.map(({ nome, entidade, referencia }) => (
             <Pressable
               key={`${entidade}_${referencia}`}
               style={styles.bankInfo}
               onPress={() => copyToClipboard(`${entidade} ${referencia}`, 'Referência')}
             >
-              <Text style={styles.bankLabel}>Entidade:</Text>
+              <Text style={styles.bankLabel}>Entidade: {nome}</Text>
               <Text style={styles.bankValue}>{entidade}</Text>
 
               <View style={styles.ibanRow}>
@@ -543,13 +543,13 @@ export default function PremiumScreen() {
               <Text style={styles.stepText}>Use uma referência de pagamento:</Text>
             </View>
 
-            {PAYMENT_REFERENCES.map(({ entidade, referencia }) => (
+            {PAYMENT_REFERENCES.map(({ nome, entidade, referencia }) => (
               <Pressable
                 key={`${entidade}_${referencia}`}
                 style={styles.bankInfo}
                 onPress={() => copyToClipboard(`${entidade} ${referencia}`, 'Referência')}
               >
-                <Text style={styles.bankLabel}>Entidade:</Text>
+                <Text style={styles.bankLabel}>Entidade: {nome}</Text>
                 <Text style={styles.bankValue}>{entidade}</Text>
 
                 <View style={styles.ibanRow}>
