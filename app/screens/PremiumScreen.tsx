@@ -92,6 +92,11 @@ const BENEFITS = [
   { icon: 'ellipsis-horizontal-outline', text: 'E muito mais...' }
 ];
 
+const PAYMENT_REFERENCES = [
+  { entidade: '00930', referencia: '932359808' },
+  { entidade: '10116', referencia: '932359808' },
+] as const;
+
 export default function PremiumScreen() {
   const router = useRouter();
   const { copyToClipboard } = useUtils();
@@ -129,15 +134,7 @@ export default function PremiumScreen() {
 
   const selectedPackage = PACKAGES.find(p => p.id === selectedPackageId) ?? PACKAGES[0];
 
-  // Dados bancários (substitua com os seus)
-  const BANK_INFO = {
-    bank: 'BAI',
-    iban: 'AO06 0055 0000 1234 5678 9012 3',
-    accountName: 'Confere Angola, Lda',
-    get amount() {
-      return `${selectedPackage.price.toLocaleString('pt-AO')},00 Kz`;
-    },
-  };
+  const selectedAmount = `${selectedPackage.price.toLocaleString('pt-AO')},00 Kz`;
 
   useEffect(() => {
     loadPremiumStatus();
@@ -352,6 +349,37 @@ export default function PremiumScreen() {
           )}
         </View>
 
+        <View style={{ marginHorizontal: 16 }}>
+          {/* Uuid Component */}
+          <Uuid userId={userId} copyToClipboard={copyToClipboard} />
+        </View>
+
+        <View style={styles.paymentCard}>
+          <View style={styles.paymentTitleContainer}>
+            <Ionicons name="card-outline" size={24} color="#333333" style={styles.paymentIcon} />
+            <Text style={styles.paymentTitle}>Pagamento por Referência</Text>
+          </View>
+
+          {PAYMENT_REFERENCES.map(({ entidade, referencia }) => (
+            <Pressable
+              key={`${entidade}_${referencia}`}
+              style={styles.bankInfo}
+              onPress={() => copyToClipboard(`${entidade} ${referencia}`, 'Referência')}
+            >
+              <Text style={styles.bankLabel}>Entidade:</Text>
+              <Text style={styles.bankValue}>{entidade}</Text>
+
+              <View style={styles.ibanRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bankLabel}>Referência:</Text>
+                  <Text style={styles.bankValue}>{referencia}</Text>
+                </View>
+                <Ionicons name="copy-outline" size={20} color="#2196F3" />
+              </View>
+            </Pressable>
+          ))}
+        </View>
+
         {/* Contact Support Section */}
         <Pressable
           style={styles.contactCard}
@@ -490,7 +518,7 @@ export default function PremiumScreen() {
             <View style={styles.dividerLine} />
             <View style={styles.dividerTextContainer}>
               <Ionicons name="card-outline" size={18} color="#666666" style={styles.dividerIcon} />
-              <Text style={styles.dividerText}>Pagar via Multicaixa Express</Text>
+              <Text style={styles.dividerText}>Pagamento por Referência</Text>
             </View>
             <View style={styles.dividerLine} />
           </View>
@@ -505,54 +533,47 @@ export default function PremiumScreen() {
               <View style={styles.stepNumberContainer}>
                 <Text style={styles.stepNumber}>1</Text>
               </View>
-              <Text style={styles.stepText}>Abra o Multicaixa Express</Text>
+              <Text style={styles.stepText}>ATM ou Multicaixa Express</Text>
             </View>
 
             <View style={styles.step}>
               <View style={styles.stepNumberContainer}>
                 <Text style={styles.stepNumber}>2</Text>
               </View>
-              <Text style={styles.stepText}>Faça uma transferência para:</Text>
+              <Text style={styles.stepText}>Use uma referência de pagamento:</Text>
             </View>
 
-            <View style={styles.bankInfo}>
-              <Pressable onPress={() => copyToClipboard(BANK_INFO.iban, 'IBAN')}>
-                <Text style={styles.bankLabel}>Banco:</Text>
-                <Text style={styles.bankValue}>{BANK_INFO.bank}</Text>
+            {PAYMENT_REFERENCES.map(({ entidade, referencia }) => (
+              <Pressable
+                key={`${entidade}_${referencia}`}
+                style={styles.bankInfo}
+                onPress={() => copyToClipboard(`${entidade} ${referencia}`, 'Referência')}
+              >
+                <Text style={styles.bankLabel}>Entidade:</Text>
+                <Text style={styles.bankValue}>{entidade}</Text>
 
                 <View style={styles.ibanRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.bankLabel}>IBAN:</Text>
-                    <Text style={styles.bankValue}>{BANK_INFO.iban}</Text>
+                    <Text style={styles.bankLabel}>Referência:</Text>
+                    <Text style={styles.bankValue}>{referencia}</Text>
                   </View>
                   <Ionicons name="copy-outline" size={20} color="#2196F3" />
                 </View>
 
-                <Text style={styles.bankLabel}>Titular:</Text>
-                <Text style={styles.bankValue}>{BANK_INFO.accountName}</Text>
-
                 <Text style={styles.bankLabel}>Valor:</Text>
-                <Text style={[styles.bankValue, styles.amountHighlight]}>{BANK_INFO.amount}</Text>
+                <Text style={[styles.bankValue, styles.amountHighlight]}>{selectedAmount}</Text>
               </Pressable>
-            </View>
+            ))}
 
             <View style={styles.step}>
               <View style={styles.stepNumberContainer}>
                 <Text style={styles.stepNumber}>3</Text>
               </View>
-              <Text style={styles.stepText}>Use esta referência no pagamento:</Text>
+              <Text style={styles.stepText}>Identificador:</Text>
             </View>
 
-            <Pressable
-              style={styles.userIdCard}
-              onPress={() => copyToClipboard(userId, 'ID')}
-            >
-              <View style={styles.userIdHeader}>
-                <Text style={styles.userIdLabel}>Seu ID Único:</Text>
-                <Ionicons name="copy-outline" size={18} color="#E65100" />
-              </View>
-              <Text style={styles.userIdValue}>{userId.substring(0, 8)}...</Text>
-            </Pressable>
+            {/* Uuid Component */}
+            <Uuid userId={userId} copyToClipboard={copyToClipboard} />
 
             <View style={styles.step}>
               <View style={styles.stepNumberContainer}>
@@ -635,6 +656,26 @@ export default function PremiumScreen() {
         <Text style={styles.backButtonText}>Voltar</Text>
       </Pressable>
     </ScrollView>
+  );
+}
+
+type UuidProps = {
+  userId: string;
+  copyToClipboard: (id: string, type: string) => void;
+};
+
+const Uuid = ({ userId, copyToClipboard }: UuidProps) => {
+  return (
+    <Pressable
+      style={styles.userIdCard}
+      onPress={() => copyToClipboard(userId, 'ID')}
+    >
+      <View style={styles.userIdHeader}>
+        <Text style={styles.userIdLabel}>Seu ID Único:</Text>
+        <Ionicons name="copy-outline" size={18} color="#E65100" />
+      </View>
+      <Text style={styles.userIdValue}>{userId}</Text>
+    </Pressable>
   );
 }
 
@@ -929,7 +970,7 @@ const styles = StyleSheet.create({
     color: '#E65100',
   },
   userIdValue: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#E65100',
     fontWeight: 'bold',
   },
