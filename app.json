@@ -87,7 +87,8 @@
             "./assets/sounds/confere-notification.wav"
           ]
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
