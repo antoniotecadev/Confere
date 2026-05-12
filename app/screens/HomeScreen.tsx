@@ -185,7 +185,13 @@ export default function HomeScreen() {
       {/* Header */}
       <ImageBackground
         source={require("@/assets/images/banner/confere-banner.webp")}
-        style={styles.header}
+        style={[
+          styles.header,
+          {
+            width: "100%",
+            alignSelf: "center",
+          },
+        ]}
         resizeMode="cover"
       >
         <View style={styles.headerLeft}>

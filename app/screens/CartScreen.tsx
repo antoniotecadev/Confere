@@ -174,7 +174,7 @@ export default function CartScreen() {
     );
   }
 
-  if (!hasAccess) {
+  if (hasAccess) {
     return <PremiumBlockModal visible={showBlockModal} onClose={closeModal} status={status} expiresAt={expiresAt} />;
   }
 
