@@ -1,17 +1,18 @@
-import { BudgetService } from '@/services/BudgetService';
-import { Cart, CartsStorage } from '@/utils/carts-storage';
-import { ComparisonsStorage } from '@/utils/comparisons-storage';
-import { getFeatureInfo } from '@/utils/features-info';
-import { getSupermarketLogo } from '@/utils/supermarkets';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import { BudgetService } from "@/services/BudgetService";
+import { Cart, CartsStorage } from "@/utils/carts-storage";
+import { ComparisonsStorage } from "@/utils/comparisons-storage";
+import { getFeatureInfo } from "@/utils/features-info";
+import { getSupermarketLogo } from "@/utils/supermarkets";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
   Animated,
   FlatList,
+  ImageBackground,
   Modal,
   Pressable,
   RefreshControl,
@@ -19,8 +20,7 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-
+} from "react-native";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -31,18 +31,18 @@ export default function HomeScreen() {
   const [fabsVisible, setFabsVisible] = useState(true);
   const fabsAnimation = useRef(new Animated.Value(1)).current;
 
-  const isVisibleFab = async () => await AsyncStorage.getItem('fabsVisible');
+  const isVisibleFab = async () => await AsyncStorage.getItem("fabsVisible");
 
   useFocusEffect(
     useCallback(() => {
-      isVisibleFab().then(value => {
-        const visible = value !== '0'; // null (1.º uso) → true; '0' → false; '1' → true
+      isVisibleFab().then((value) => {
+        const visible = value !== "0"; // null (1.º uso) → true; '0' → false; '1' → true
         setFabsVisible(visible);
         fabsAnimation.setValue(visible ? 1 : 0); // sincroniza animação sem animar
       });
       loadCarts();
       checkBudgetAlert();
-    }, [])
+    }, []),
   );
 
   const loadCarts = async () => {
@@ -50,11 +50,11 @@ export default function HomeScreen() {
       const storedCarts = await CartsStorage.getAllCarts();
       // Ordenar por data mais recente
       const sortedCarts = storedCarts.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setCarts(sortedCarts);
     } catch (error) {
-      console.error('Erro ao carregar carrinhos:', error);
+      console.error("Erro ao carregar carrinhos:", error);
     } finally {
       setIsLoading(false);
     }
@@ -63,17 +63,13 @@ export default function HomeScreen() {
   const checkBudgetAlert = async () => {
     const alert = await BudgetService.shouldShowAlert();
     if (alert?.show) {
-      Alert.alert(
-        'Orçamento Mensal',
-        alert.message,
-        [
-          { text: 'OK', style: 'default' },
-          {
-            text: 'Ver Orçamento',
-            onPress: () => router.push('/screens/BudgetScreen'),
-          },
-        ]
-      );
+      Alert.alert("Orçamento Mensal", alert.message, [
+        { text: "OK", style: "default" },
+        {
+          text: "Ver Orçamento",
+          onPress: () => router.push("/screens/BudgetScreen"),
+        },
+      ]);
     }
   };
 
@@ -84,7 +80,7 @@ export default function HomeScreen() {
   }, []);
 
   const handleCreateNewCart = () => {
-    router.push('/screens/CartScreen');
+    router.push("/screens/CartScreen");
   };
 
   const handleOpenCart = (cartId: string) => {
@@ -93,13 +89,13 @@ export default function HomeScreen() {
 
   const handleDeleteCart = (cartId: string, supermarketName: string) => {
     Alert.alert(
-      'Eliminar carrinho',
+      "Eliminar carrinho",
       `Tens certeza que desejas eliminar o carrinho "${supermarketName}" e todos os produtos dentro dele?\n\nO histórico de comparação também será eliminado.`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Eliminar',
-          style: 'destructive',
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             try {
               // Eliminar o carrinho
@@ -108,25 +104,25 @@ export default function HomeScreen() {
               await ComparisonsStorage.deleteComparison(cartId);
               await loadCarts();
             } catch (error) {
-              console.error('Erro ao eliminar carrinho:', error);
-              Alert.alert('Erro', 'Não foi possível eliminar o carrinho.');
+              console.error("Erro ao eliminar carrinho:", error);
+              Alert.alert("Erro", "Não foi possível eliminar o carrinho.");
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
+    return `${amount.toLocaleString("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kz`;
   };
 
   const toggleFabs = async () => {
@@ -139,7 +135,7 @@ export default function HomeScreen() {
       tension: 40,
     }).start();
 
-    await AsyncStorage.setItem('fabsVisible', newVisible ? '1' : '0');
+    await AsyncStorage.setItem("fabsVisible", newVisible ? "1" : "0");
     setFabsVisible(newVisible);
   };
 
@@ -150,7 +146,8 @@ export default function HomeScreen() {
         pressed && styles.cartItemPressed,
       ]}
       onPress={() => handleOpenCart(item.id)}
-      onLongPress={() => handleDeleteCart(item.id, item.supermarket)}>
+      onLongPress={() => handleDeleteCart(item.id, item.supermarket)}
+    >
       <View style={styles.cartContent}>
         <Image
           source={getSupermarketLogo(item.supermarket)}
@@ -164,7 +161,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.cartFooter}>
             <Text style={styles.itemCount}>
-              {item.items.length} {item.items.length === 1 ? 'item' : 'itens'}
+              {item.items.length} {item.items.length === 1 ? "item" : "itens"}
             </Text>
             <Text style={styles.cartTotal}>{formatCurrency(item.total)}</Text>
           </View>
@@ -186,11 +183,17 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <ImageBackground
+        source={require("@/assets/images/banner/confere-banner.webp")}
+        style={styles.header}
+        resizeMode="cover"
+      >
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Confere</Text>
           <Text style={styles.headerSubtitle}>Os meus carrinhos</Text>
-          <Text style={styles.headerHint}>Mantém pressionado para eliminar</Text>
+          <Text style={styles.headerHint}>
+            Mantém pressionado para eliminar
+          </Text>
         </View>
         <View style={styles.headerButtons}>
           <Pressable
@@ -198,7 +201,8 @@ export default function HomeScreen() {
               styles.headerButton,
               pressed && styles.headerButtonPressed,
             ]}
-            onPress={() => router.push('/screens/HistoryScreen')}>
+            onPress={() => router.push("/screens/HistoryScreen")}
+          >
             <Ionicons name="time-outline" size={24} color="#FFFFFF" />
           </Pressable>
           <Pressable
@@ -206,7 +210,8 @@ export default function HomeScreen() {
               styles.headerButton,
               pressed && styles.headerButtonPressed,
             ]}
-            onPress={() => router.push('/screens/StatisticsScreen')}>
+            onPress={() => router.push("/screens/StatisticsScreen")}
+          >
             <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
           </Pressable>
           <Pressable
@@ -214,17 +219,18 @@ export default function HomeScreen() {
               styles.headerButton,
               pressed && styles.headerButtonPressed,
             ]}
-            onPress={() => router.push('/screens/SettingsScreen')}>
+            onPress={() => router.push("/screens/SettingsScreen")}
+          >
             <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
           </Pressable>
         </View>
-      </View>
+      </ImageBackground>
 
       {/* Cart List */}
       <FlatList
         data={carts}
         renderItem={renderCartItem}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.listContent,
           carts.length === 0 && styles.listContentEmpty,
@@ -242,8 +248,9 @@ export default function HomeScreen() {
           styles.fabContainer,
           { bottom: 380 },
           { opacity: fabsAnimation },
-        ]}>
-        <Pressable onPress={() => setSelectedFeature('contact')}>
+        ]}
+      >
+        <Pressable onPress={() => setSelectedFeature("contact")}>
           <Text style={styles.fabLabel}>Fala Connosco</Text>
         </Pressable>
         <Pressable
@@ -251,7 +258,8 @@ export default function HomeScreen() {
             styles.fabSeptenary,
             pressed && styles.fabPressed,
           ]}
-          onPress={() => router.push('/screens/ContactScreen')}>
+          onPress={() => router.push("/screens/ContactScreen")}
+        >
           <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
@@ -261,8 +269,9 @@ export default function HomeScreen() {
           styles.fabContainer,
           { bottom: 310 },
           { opacity: fabsAnimation },
-        ]}>
-        <Pressable onPress={() => setSelectedFeature('calculator')}>
+        ]}
+      >
+        <Pressable onPress={() => setSelectedFeature("calculator")}>
           <Text style={styles.fabLabel}>Calculadora</Text>
         </Pressable>
         <Pressable
@@ -270,7 +279,8 @@ export default function HomeScreen() {
             styles.fabSenary,
             pressed && styles.fabPressed,
           ]}
-          onPress={() => router.push('/screens/DiscountCalculatorScreen')}>
+          onPress={() => router.push("/screens/DiscountCalculatorScreen")}
+        >
           <Ionicons name="calculator" size={24} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
@@ -280,8 +290,9 @@ export default function HomeScreen() {
           styles.fabContainer,
           { bottom: 240 },
           { opacity: fabsAnimation },
-        ]}>
-        <Pressable onPress={() => setSelectedFeature('budget')}>
+        ]}
+      >
+        <Pressable onPress={() => setSelectedFeature("budget")}>
           <Text style={styles.fabLabel}>Orçamento</Text>
         </Pressable>
         <Pressable
@@ -289,7 +300,8 @@ export default function HomeScreen() {
             styles.fabQuinary,
             pressed && styles.fabPressed,
           ]}
-          onPress={() => router.push('/screens/BudgetScreen')}>
+          onPress={() => router.push("/screens/BudgetScreen")}
+        >
           <Ionicons name="wallet" size={24} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
@@ -299,8 +311,9 @@ export default function HomeScreen() {
           styles.fabContainer,
           { bottom: 170 },
           { opacity: fabsAnimation },
-        ]}>
-        <Pressable onPress={() => setSelectedFeature('favorites')}>
+        ]}
+      >
+        <Pressable onPress={() => setSelectedFeature("favorites")}>
           <Text style={styles.fabLabel}>Favoritos</Text>
         </Pressable>
         <Pressable
@@ -308,7 +321,8 @@ export default function HomeScreen() {
             styles.fabQuaternary,
             pressed && styles.fabPressed,
           ]}
-          onPress={() => router.push('/screens/FavoritesScreen')}>
+          onPress={() => router.push("/screens/FavoritesScreen")}
+        >
           <Ionicons name="star" size={24} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
@@ -318,8 +332,9 @@ export default function HomeScreen() {
           styles.fabContainer,
           { bottom: 100 },
           { opacity: fabsAnimation },
-        ]}>
-        <Pressable onPress={() => setSelectedFeature('shopping-list')}>
+        ]}
+      >
+        <Pressable onPress={() => setSelectedFeature("shopping-list")}>
           <Text style={styles.fabLabel}>Lista de Compras</Text>
         </Pressable>
         <Pressable
@@ -327,7 +342,8 @@ export default function HomeScreen() {
             styles.fabTertiary,
             pressed && styles.fabPressed,
           ]}
-          onPress={() => router.push('/screens/ShoppingListScreen')}>
+          onPress={() => router.push("/screens/ShoppingListScreen")}
+        >
           <Ionicons name="list" size={24} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
@@ -337,8 +353,9 @@ export default function HomeScreen() {
           styles.fabContainer,
           { bottom: 30 },
           { opacity: fabsAnimation },
-        ]}>
-        <Pressable onPress={() => setSelectedFeature('comparison')}>
+        ]}
+      >
+        <Pressable onPress={() => setSelectedFeature("comparison")}>
           <Text style={styles.fabLabel}>Comparação</Text>
         </Pressable>
         <Pressable
@@ -346,15 +363,14 @@ export default function HomeScreen() {
             styles.fabSecondary,
             pressed && styles.fabPressed,
           ]}
-          onPress={() => router.push('/screens/PriceComparisonScreen')}>
+          onPress={() => router.push("/screens/PriceComparisonScreen")}
+        >
           <Ionicons name="pricetags" size={24} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
 
       {/* Toggle FABs Button */}
-      <Pressable
-        style={styles.fabToggle}
-        onPress={toggleFabs}>
+      <Pressable style={styles.fabToggle} onPress={toggleFabs}>
         <Ionicons
           name={fabsVisible ? "eye-off-outline" : "eye-outline"}
           size={24}
@@ -363,11 +379,9 @@ export default function HomeScreen() {
       </Pressable>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          pressed && styles.fabPressed,
-        ]}
-        onPress={handleCreateNewCart}>
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        onPress={handleCreateNewCart}
+      >
         <Text style={styles.fabIcon}>+</Text>
       </Pressable>
 
@@ -376,81 +390,88 @@ export default function HomeScreen() {
         visible={selectedFeature !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedFeature(null)}>
+        onRequestClose={() => setSelectedFeature(null)}
+      >
         <Pressable
           style={styles.modalOverlay}
-          onPress={() => setSelectedFeature(null)}>
+          onPress={() => setSelectedFeature(null)}
+        >
           <Pressable
             style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}>
-            {selectedFeature && (() => {
-              const featureInfo = getFeatureInfo(selectedFeature);
-              if (!featureInfo) return null;
+            onPress={(e) => e.stopPropagation()}
+          >
+            {selectedFeature &&
+              (() => {
+                const featureInfo = getFeatureInfo(selectedFeature);
+                if (!featureInfo) return null;
 
-              return (
-                <>
-                  <View style={styles.modalHeader}>
-                    <View style={styles.modalHeaderLeft}>
-                      <Ionicons
-                        name={featureInfo.icon as any}
-                        size={32}
-                        color="#2196F3"
-                      />
-                      <Text style={styles.modalTitle}>{featureInfo.title}</Text>
+                return (
+                  <>
+                    <View style={styles.modalHeader}>
+                      <View style={styles.modalHeaderLeft}>
+                        <Ionicons
+                          name={featureInfo.icon as any}
+                          size={32}
+                          color="#2196F3"
+                        />
+                        <Text style={styles.modalTitle}>
+                          {featureInfo.title}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => setSelectedFeature(null)}
+                        style={styles.modalCloseButton}
+                      >
+                        <Ionicons name="close" size={28} color="#666666" />
+                      </Pressable>
                     </View>
+
+                    <ScrollView
+                      style={styles.modalBody}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      <Text style={styles.modalDescription}>
+                        {featureInfo.description}
+                      </Text>
+
+                      <View style={styles.modalSection}>
+                        <View style={styles.modalSectionHeader}>
+                          <Ionicons name="sparkles" size={20} color="#2196F3" />
+                          <Text style={styles.modalSectionTitle}>
+                            Benefícios
+                          </Text>
+                        </View>
+                        {featureInfo.benefits.map((benefit, index) => (
+                          <Text key={index} style={styles.modalListItem}>
+                            {benefit}
+                          </Text>
+                        ))}
+                      </View>
+
+                      <View style={styles.modalSection}>
+                        <View style={styles.modalSectionHeader}>
+                          <Ionicons name="book" size={20} color="#2196F3" />
+                          <Text style={styles.modalSectionTitle}>
+                            Como Usar
+                          </Text>
+                        </View>
+                        {featureInfo.howToUse.map((step, index) => (
+                          <Text key={index} style={styles.modalListItem}>
+                            {step}
+                          </Text>
+                        ))}
+                      </View>
+                    </ScrollView>
+
                     <Pressable
+                      style={styles.modalActionButton}
                       onPress={() => setSelectedFeature(null)}
-                      style={styles.modalCloseButton}>
-                      <Ionicons name="close" size={28} color="#666666" />
+                    >
+                      <Text style={styles.modalActionButtonText}>Entendi</Text>
                     </Pressable>
-                  </View>
-
-                  <ScrollView
-                    style={styles.modalBody}
-                    showsVerticalScrollIndicator={false}>
-                    <Text style={styles.modalDescription}>
-                      {featureInfo.description}
-                    </Text>
-
-                    <View style={styles.modalSection}>
-                      <View style={styles.modalSectionHeader}>
-                        <Ionicons name="sparkles" size={20} color="#2196F3" />
-                        <Text style={styles.modalSectionTitle}>
-                          Benefícios
-                        </Text>
-                      </View>
-                      {featureInfo.benefits.map((benefit, index) => (
-                        <Text key={index} style={styles.modalListItem}>
-                          {benefit}
-                        </Text>
-                      ))}
-                    </View>
-
-                    <View style={styles.modalSection}>
-                      <View style={styles.modalSectionHeader}>
-                        <Ionicons name="book" size={20} color="#2196F3" />
-                        <Text style={styles.modalSectionTitle}>
-                          Como Usar
-                        </Text>
-                      </View>
-                      {featureInfo.howToUse.map((step, index) => (
-                        <Text key={index} style={styles.modalListItem}>
-                          {step}
-                        </Text>
-                      ))}
-                    </View>
-                  </ScrollView>
-
-                  <Pressable
-                    style={styles.modalActionButton}
-                    onPress={() => setSelectedFeature(null)}>
-                    <Text style={styles.modalActionButtonText}>
-                      Entendi
-                    </Text>
-                  </Pressable>
-                </>
-              );
-            })()}
+                  </>
+                );
+              })()}
           </Pressable>
         </Pressable>
       </Modal>
@@ -461,64 +482,78 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   header: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 4,
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
   headerLeft: {
     flex: 1,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   headerHint: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: "rgba(255, 255, 255, 0.7)",
     marginTop: 4,
-    fontStyle: 'italic',
+    fontStyle: "italic",
+    textShadowColor: "rgba(0, 0, 0, 0.6)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   headerButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   headerButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 4,
   },
   headerButtonPressed: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
   },
   listContent: {
     padding: 16,
   },
   listContentEmpty: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   cartItem: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     marginBottom: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -528,8 +563,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cartContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   supermarketLogo: {
@@ -546,40 +581,40 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   cartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   supermarketName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
+    fontWeight: "600",
+    color: "#333333",
     flex: 1,
   },
   cartDate: {
     fontSize: 14,
-    color: '#666666',
+    color: "#666666",
   },
   cartFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: "#F0F0F0",
   },
   itemCount: {
     fontSize: 14,
-    color: '#666666',
+    color: "#666666",
   },
   cartTotal: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2196F3',
+    fontWeight: "bold",
+    color: "#2196F3",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: 40,
   },
   emptyIcon: {
@@ -588,28 +623,28 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontWeight: "bold",
+    color: "#333333",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyDescription: {
     fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
+    color: "#666666",
+    textAlign: "center",
     lineHeight: 24,
   },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
     left: 20,
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#2196F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -619,28 +654,28 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabContainer: {
-    position: 'absolute',
+    position: "absolute",
     right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   fabLabel: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    color: '#FFFFFF',
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    color: "#FFFFFF",
     padding: 6,
     borderRadius: 6,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   fabSecondary: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4CAF50',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -653,10 +688,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FF9800',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#FF9800",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -669,10 +704,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#f7e016',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#f7e016",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -685,10 +720,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4CAF50',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -701,10 +736,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#9C27B0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#9C27B0",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -717,10 +752,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#00BCD4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#00BCD4",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -730,16 +765,16 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabToggle: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 100,
     left: 24,
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#757575',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "#757575",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -753,23 +788,23 @@ const styles = StyleSheet.create({
   },
   fabIcon: {
     fontSize: 32,
-    color: '#FFFFFF',
-    fontWeight: '300',
+    color: "#FFFFFF",
+    fontWeight: "300",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    width: '100%',
+    width: "100%",
     maxWidth: 500,
-    maxHeight: '100%',
-    shadowColor: '#000',
+    maxHeight: "100%",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -779,32 +814,32 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: "#F0F0F0",
   },
   modalHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     flex: 1,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontWeight: "bold",
+    color: "#333333",
     flex: 1,
   },
   modalCloseButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalBody: {
     padding: 20,
@@ -812,41 +847,41 @@ const styles = StyleSheet.create({
   modalDescription: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#666666',
+    color: "#666666",
     marginBottom: 24,
   },
   modalSection: {
     marginBottom: 24,
   },
   modalSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 12,
   },
   modalSectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
+    fontWeight: "bold",
+    color: "#333333",
   },
   modalListItem: {
     fontSize: 15,
     lineHeight: 14,
-    color: '#666666',
+    color: "#666666",
     marginBottom: 8,
     paddingLeft: 8,
   },
   modalActionButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     margin: 20,
     marginTop: 0,
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalActionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });
