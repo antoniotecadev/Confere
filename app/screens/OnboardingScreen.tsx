@@ -1,18 +1,17 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
-    Dimensions,
-    FlatList,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
-    ViewToken,
-} from 'react-native';
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  ViewToken,
+  useWindowDimensions,
+} from "react-native";
 
-const ONBOARDING_KEY = '@confere:hasSeenOnboarding';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ONBOARDING_KEY = "@confere:hasSeenOnboarding";
 
 interface OnboardingSlide {
   id: string;
@@ -24,39 +23,44 @@ interface OnboardingSlide {
 
 const slides: OnboardingSlide[] = [
   {
-    id: '1',
-    title: 'Já pagaste mais do que devias?',
-    description: 'Milhares de angolanos pagam valores errados no caixa todos os dias, sem ter como provar.',
-    icon: '🛒',
-    color: '#FF6B6B',
+    id: "1",
+    title: "Já pagaste mais do que devias?",
+    description:
+      "Milhares de angolanos pagam valores errados no caixa todos os dias, sem ter como provar.",
+    icon: "🛒",
+    color: "#FF6B6B",
   },
   {
-    id: '2',
-    title: 'Regista enquanto compras',
-    description: 'Adiciona os produtos ao teu carrinho digital e vê em tempo real quanto vais pagar.',
-    icon: '📱',
-    color: '#4ECDC4',
+    id: "2",
+    title: "Regista enquanto compras",
+    description:
+      "Adiciona os produtos ao teu carrinho digital e vê em tempo real quanto vais pagar.",
+    icon: "📱",
+    color: "#4ECDC4",
   },
   {
-    id: '3',
-    title: 'Confere antes de pagar',
-    description: 'Compara o total da app com o valor cobrado. Se não confere, tens provas.',
-    icon: '✓',
-    color: '#2196F3',
+    id: "3",
+    title: "Confere antes de pagar",
+    description:
+      "Compara o total da app com o valor cobrado. Se não confere, tens provas.",
+    icon: "✓",
+    color: "#2196F3",
   },
 ];
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<OnboardingSlide> | null>(null);
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems.length > 0) {
         setCurrentIndex(viewableItems[0].index ?? 0);
       }
-    }
+    },
   ).current;
 
   const viewabilityConfig = useRef({
@@ -65,7 +69,7 @@ export default function OnboardingScreen() {
 
   const handleSkip = async () => {
     await markOnboardingComplete();
-    router.replace('/screens/HomeScreen');
+    router.replace("/screens/HomeScreen");
   };
 
   const handleNext = () => {
@@ -79,19 +83,28 @@ export default function OnboardingScreen() {
 
   const handleStart = async () => {
     await markOnboardingComplete();
-    router.replace('/screens/HomeScreen');
+    router.replace("/screens/HomeScreen");
   };
 
   const markOnboardingComplete = async () => {
     try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+      await AsyncStorage.setItem(ONBOARDING_KEY, "true");
     } catch (error) {
-      console.error('Erro ao salvar status do onboarding:', error);
+      console.error("Erro ao salvar status do onboarding:", error);
     }
   };
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
-    <View style={[styles.slide, { backgroundColor: item.color }]}>
+    <View
+      style={[
+        styles.slide,
+        {
+          backgroundColor: item.color,
+          width: SCREEN_WIDTH,
+          height: SCREEN_HEIGHT,
+        },
+      ]}
+    >
       <View style={styles.content}>
         {/* Icon/Image placeholder */}
         <View style={styles.iconContainer}>
@@ -125,7 +138,13 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       {/* Skip button */}
       {currentIndex < slides.length - 1 && (
-        <Pressable style={styles.skipButton} onPress={handleSkip}>
+        <Pressable
+          style={styles.skipButton}
+          onPress={handleSkip}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel="Pular onboarding"
+        >
           <Text style={styles.skipText}>Pular</Text>
         </Pressable>
       )}
@@ -138,10 +157,21 @@ export default function OnboardingScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         bounces={false}
+        keyboardShouldPersistTaps="handled"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        snapToInterval={SCREEN_WIDTH}
+        decelerationRate="fast"
+        snapToAlignment="start"
+        getItemLayout={(_, index) => ({
+          length: SCREEN_WIDTH,
+          offset: SCREEN_WIDTH * index,
+          index,
+        })}
       />
 
       {/* Footer with pagination and buttons */}
@@ -150,11 +180,23 @@ export default function OnboardingScreen() {
 
         <View style={styles.buttonContainer}>
           {currentIndex < slides.length - 1 ? (
-            <Pressable style={styles.nextButton} onPress={handleNext}>
+            <Pressable
+              style={styles.nextButton}
+              onPress={handleNext}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Próximo"
+            >
               <Text style={styles.nextButtonText}>Próximo</Text>
             </Pressable>
           ) : (
-            <Pressable style={styles.startButton} onPress={handleStart}>
+            <Pressable
+              style={styles.startButton}
+              onPress={handleStart}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Começar"
+            >
               <Text style={styles.startButtonText}>Começar</Text>
             </Pressable>
           )}
@@ -167,10 +209,10 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   skipButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     right: 20,
     zIndex: 10,
@@ -178,18 +220,17 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: "#000000",
+    fontWeight: "600",
   },
   slide: {
-    width: SCREEN_WIDTH,
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     paddingHorizontal: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   iconContainer: {
     marginBottom: 40,
@@ -199,28 +240,28 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
     marginBottom: 20,
   },
   description: {
     fontSize: 16,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    color: "#FFFFFF",
+    textAlign: "center",
     lineHeight: 24,
     opacity: 0.9,
   },
   footer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
-    width: SCREEN_WIDTH,
+    width: "100%",
     paddingVertical: 40,
     paddingHorizontal: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   pagination: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 30,
   },
   dot: {
@@ -230,36 +271,36 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   dotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     width: 30,
   },
   dotInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
   },
   buttonContainer: {
-    width: '100%',
+    width: "100%",
   },
   nextButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingVertical: 16,
     paddingHorizontal: 40,
     borderRadius: 30,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
   },
   nextButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   startButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     paddingVertical: 16,
     paddingHorizontal: 40,
     borderRadius: 30,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -269,8 +310,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   startButtonText: {
-    color: '#2196F3',
+    color: "#2196F3",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
